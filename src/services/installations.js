@@ -7,15 +7,6 @@ import { logger } from '../lib/logger.js';
  */
 export async function saveInstallation(installation) {
   try {
-    console.log('🔧 saveInstallation called with:', {
-      hasTeam: !!installation.team,
-      teamId: installation.team?.id,
-      hasEnterprise: !!installation.enterprise,
-      enterpriseId: installation.enterprise?.id,
-      hasBot: !!installation.bot,
-      botToken: installation.bot?.token ? 'SET' : 'MISSING'
-    });
-    
     const teamId = installation.team?.id;
     const enterpriseId = installation.enterprise?.id;
     
@@ -29,7 +20,6 @@ export async function saveInstallation(installation) {
     // Store the installation data
     await redis.setex(key, 365 * 24 * 3600, JSON.stringify(installation)); // 1 year TTL
     
-    console.log('✅ Installation saved successfully:', { teamId, enterpriseId, key });
     logger.info('Saved installation:', { teamId, enterpriseId, key });
     
     return installation;

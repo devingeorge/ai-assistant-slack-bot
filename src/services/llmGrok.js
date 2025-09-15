@@ -4,7 +4,7 @@
 import OpenAI from 'openai';
 
 const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
-const baseURL = process.env.XAI_BASE_URL || 'https://api.x.ai';
+const baseURL = process.env.XAI_BASE_URL || 'https://api.x.ai/v1';
 
 // Only create client if we have an API key
 let client = null;

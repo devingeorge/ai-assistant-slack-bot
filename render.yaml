@@ -1,14 +1,9 @@
 services:
   - type: web
-    name: slack-bot
+    name: slack-groq-bot
     env: node
     buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        fromService:
-          type: web
-          name: slack-bot
-          property: port
