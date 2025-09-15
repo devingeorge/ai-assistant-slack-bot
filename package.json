@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node test-server.js",
+    "start": "node minimal-server.js",
     "test-server": "node test-server.js",
     "rag:db": "psql \"$PG_CONN\" -f rag/schema.sql",
     "rag:ingest": "node rag/ingest.js docs"
