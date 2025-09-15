@@ -123,20 +123,20 @@ receiver.router.get('/', (req, res) => {
     console.log('🚂 Railway Port Debug:');
     console.log(`   PORT environment variable: ${process.env.PORT}`);
     console.log(`   Using port: ${port}`);
-    console.log(`   Host: :: (all IPv6 interfaces)`);
+    console.log(`   Host: 0.0.0.0 (all IPv4 interfaces)`);
     
     console.log('🚀 Starting Slack Bot server...');
     
     // For Railway, we need to explicitly start the HTTP server
-    // Must listen on :: (all IPv6) not ::1 (localhost IPv6)
+    // Try explicit IPv4 binding to avoid IPv6 conflicts
     await app.start({
       port: port,
-      host: '::'  // Changed from '0.0.0.0' to '::' for Railway
+      host: '0.0.0.0'  // Back to IPv4 - Slack Bolt might handle IPv6 differently
     });
     
     console.log('✅ Server startup completed successfully!');
     
-    console.log(`⚡️ Slack + Grok bot running on ::${port} (HTTP Mode)`);
+    console.log(`⚡️ Slack + Grok bot running on 0.0.0.0:${port} (HTTP Mode)`);
     console.log(`🌐 Server should be accessible on all interfaces`);
     console.log(`🔗 URLs should work at: https://ai-assistant-slack-bot-production.up.railway.app`);
     console.log(`🎯 Railway should route traffic to this port: ${port}`);
