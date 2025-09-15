@@ -110,6 +110,12 @@ receiver.router.get('/', (req, res) => {
   try {
     const port = process.env.PORT || 3000;
     
+    // Debug Railway port configuration
+    console.log('🚂 Railway Port Debug:');
+    console.log(`   PORT environment variable: ${process.env.PORT}`);
+    console.log(`   Using port: ${port}`);
+    console.log(`   Host: 0.0.0.0`);
+    
     // For Railway, we need to explicitly start the HTTP server
     await app.start({
       port: port,
@@ -119,6 +125,7 @@ receiver.router.get('/', (req, res) => {
     console.log(`⚡️ Slack + Grok bot running on 0.0.0.0:${port} (HTTP Mode)`);
     console.log(`🌐 Server should be accessible on all interfaces`);
     console.log(`🔗 URLs should work at: https://ai-assistant-slack-bot-production.up.railway.app`);
+    console.log(`🎯 Railway should route traffic to this port: ${port}`);
 
     // Add install success page
     receiver.router.get('/slack/install/success', (req, res) => {
