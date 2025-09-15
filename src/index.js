@@ -82,8 +82,9 @@ registerActions(app);
 (async () => {
   try {
     const port = process.env.PORT || 3000;
-    await app.start(port);
-    console.log(`⚡️ Slack + Grok bot running on port ${port} (HTTP Mode)`);
+    const host = process.env.HOST || '0.0.0.0';
+    await app.start({ port, host });
+    console.log(`⚡️ Slack + Grok bot running on ${host}:${port} (HTTP Mode)`);
 
     // Add install success page
     receiver.router.get('/slack/install/success', (req, res) => {
