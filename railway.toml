@@ -1,4 +1,0 @@
-# Railway config with longer health check timeout
-[deploy]
-healthcheckPath = "/health"
-healthcheckTimeout = 120
