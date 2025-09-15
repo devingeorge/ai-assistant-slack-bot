@@ -82,11 +82,14 @@ registerActions(app);
 (async () => {
   try {
     const port = process.env.PORT || 3000;
-    const host = process.env.HOST || '0.0.0.0';
     
-    // Start the server
-    await app.start(port);
-    console.log(`⚡️ Slack + Grok bot running on port ${port} (HTTP Mode)`);
+    // For Railway, we need to explicitly start the HTTP server
+    await app.start({
+      port: port,
+      host: '0.0.0.0'
+    });
+    
+    console.log(`⚡️ Slack + Grok bot running on 0.0.0.0:${port} (HTTP Mode)`);
     console.log(`🌐 Server should be accessible on all interfaces`);
     console.log(`🔗 URLs should work at: https://ai-assistant-slack-bot-production.up.railway.app`);
 
