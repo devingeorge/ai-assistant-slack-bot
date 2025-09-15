@@ -20,7 +20,10 @@ const server = createServer((req, res) => {
   }
 });
 
-const port = 8080;
+const port = process.env.PORT || 3000;
+console.log(`🔥 Railway PORT env: ${process.env.PORT}`);
+console.log(`🔥 Using port: ${port}`);
+
 server.listen(port, '0.0.0.0', () => {
   console.log(`🔥 Minimal server listening on 0.0.0.0:${port}`);
 });
