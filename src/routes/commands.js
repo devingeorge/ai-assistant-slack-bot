@@ -39,7 +39,8 @@ export function registerCommands(app) {
    * /ask — quick Q&A in the current channel/thread (Gemini only).
    */
   app.command('/ask', async ({ ack, command, client, context }) => {
-    await ack();
+    // Acknowledge immediately to avoid timeout
+    await ack('🤔 Thinking...');
 
     try {
       const team = context.teamId || command.team_id;
