@@ -1,3 +1,4 @@
-# Minimal Railway config - let Railway handle defaults
+# Railway config with longer health check timeout
 [deploy]
 healthcheckPath = "/health"
+healthcheckTimeout = 120

@@ -116,11 +116,15 @@ receiver.router.get('/', (req, res) => {
     console.log(`   Using port: ${port}`);
     console.log(`   Host: 0.0.0.0`);
     
+    console.log('🚀 Starting Slack Bot server...');
+    
     // For Railway, we need to explicitly start the HTTP server
     await app.start({
       port: port,
       host: '0.0.0.0'
     });
+    
+    console.log('✅ Server startup completed successfully!');
     
     console.log(`⚡️ Slack + Grok bot running on 0.0.0.0:${port} (HTTP Mode)`);
     console.log(`🌐 Server should be accessible on all interfaces`);
