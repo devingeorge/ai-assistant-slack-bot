@@ -83,8 +83,12 @@ registerActions(app);
   try {
     const port = process.env.PORT || 3000;
     const host = process.env.HOST || '0.0.0.0';
-    await app.start({ port, host });
-    console.log(`⚡️ Slack + Grok bot running on ${host}:${port} (HTTP Mode)`);
+    
+    // Start the server
+    await app.start(port);
+    console.log(`⚡️ Slack + Grok bot running on port ${port} (HTTP Mode)`);
+    console.log(`🌐 Server should be accessible on all interfaces`);
+    console.log(`🔗 URLs should work at: https://ai-assistant-slack-bot-production.up.railway.app`);
 
     // Add install success page
     receiver.router.get('/slack/install/success', (req, res) => {
@@ -107,6 +111,11 @@ registerActions(app);
       `);
     });
 
+    // Add simple test route first
+    receiver.router.get('/test', (req, res) => {
+      res.send('Server is working!');
+    });
+
     // Add health check endpoint
     receiver.router.get('/health', (req, res) => {
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -124,6 +133,7 @@ registerActions(app);
             <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
             <hr>
             <p><a href="/health">Health Check</a></p>
+            <p><a href="/test">Simple Test</a></p>
             <p><a href="/slack/install">Install to Slack</a></p>
           </body>
         </html>
