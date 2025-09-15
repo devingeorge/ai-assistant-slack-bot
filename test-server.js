@@ -8,6 +8,12 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Add middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`📥 ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 app.get('/', (req, res) => {
   res.send(`
     <html>
@@ -56,11 +62,43 @@ app.post('/slack/commands', (req, res) => {
   });
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`🚀 Express server with Slack endpoints running on 0.0.0.0:${port}`);
+// Catch-all route for debugging
+app.use('*', (req, res) => {
+  console.log(`🔍 Catch-all route hit: ${req.method} ${req.originalUrl}`);
+  res.status(200).json({
+    message: 'Server is working',
+    method: req.method,
+    url: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
+});
+
+
+// Try different listening approaches
+const server = app.listen(port, (err) => {
+  if (err) {
+    console.error('❌ Server failed to start:', err);
+    process.exit(1);
+  }
+  
+  const address = server.address();
+  console.log(`🚀 Express server running!`);
+  console.log(`📍 Address: ${JSON.stringify(address)}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔧 Port from env: ${process.env.PORT}`);
   console.log(`🔗 Available endpoints:`);
   console.log(`   GET  /health`);
   console.log(`   POST /slack/events`);
   console.log(`   POST /slack/commands`);
   console.log(`   GET  /slack/oauth_redirect`);
+  console.log(`📡 Should be accessible at: https://ai-assistant-slack-bot-production.up.railway.app`);
+});
+
+// Add error handling for the server
+server.on('error', (err) => {
+  console.error('🚨 Server error:', err);
+});
+
+server.on('listening', () => {
+  console.log('✅ Server is now listening for connections');
 });
