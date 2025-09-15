@@ -110,27 +110,9 @@ server.on('error', (err) => {
 server.on('listening', () => {
   console.log('✅ Server is now listening for connections');
   
-  // Self-test the health endpoint
+  // Log address info for debugging
   const address = server.address();
-  console.log(`🔍 Self-testing health endpoint...`);
-  
-  import('http').then(({ default: http }) => {
-    const healthReq = http.request({
-      hostname: 'localhost',
-      port: address.port,
-      path: '/health',
-      method: 'GET'
-    }, (res) => {
-      console.log(`✅ Self-test result: ${res.statusCode}`);
-      res.on('data', (chunk) => {
-        console.log(`📄 Response: ${chunk}`);
-      });
-    });
-    
-    healthReq.on('error', (err) => {
-      console.log(`❌ Self-test failed: ${err.message}`);
-    });
-    
-    healthReq.end();
-  });
+  console.log(`📍 Server address details:`, JSON.stringify(address));
+  console.log(`🔗 Should be accessible at: https://ai-assistant-slack-bot-production.up.railway.app`);
+  console.log(`🏥 Health check: https://ai-assistant-slack-bot-production.up.railway.app/health`);
 });
