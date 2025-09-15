@@ -1,13 +1,22 @@
 // src/index.js
+console.log('🟢 APP STARTING - index.js loaded');
+
 import pkg from '@slack/bolt';
 const { App, LogLevel, ExpressReceiver } = pkg;
 
+console.log('🟢 Slack Bolt imported successfully');
+
 import { config } from './config.js';
+console.log('🟢 Config imported');
+
 import { registerEvents } from './routes/events.js';
-import { registerCommands } from './routes/commands.js';
+import { registerCommands } from './routes/commands.js'; 
 import { registerActions } from './routes/actions.js';
+console.log('🟢 Routes imported');
+
 import { clearAllState, redis } from './services/memory.js';
 import { getInstallation, saveInstallation, deleteInstallation } from './services/installations.js';
+console.log('🟢 Services imported');
 
 // Check if we have the required environment variables
 console.log('🔍 Environment Variables Check:');
