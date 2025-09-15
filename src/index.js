@@ -9,12 +9,26 @@ import { registerActions } from './routes/actions.js';
 import { clearAllState, redis } from './services/memory.js';
 import { getInstallation, saveInstallation, deleteInstallation } from './services/installations.js';
 
+// Check if we have the required environment variables
+if (!config.slack.signingSecret) {
+  console.error('❌ Missing SLACK_SIGNING_SECRET environment variable');
+  console.log('📝 Please set the following environment variables in Railway:');
+  console.log('   SLACK_CLIENT_ID=your-client-id');
+  console.log('   SLACK_CLIENT_SECRET=your-client-secret');
+  console.log('   SLACK_SIGNING_SECRET=your-signing-secret');
+  console.log('   SLACK_STATE_SECRET=your-random-secret');
+  console.log('   GROK_API_KEY=your-grok-api-key');
+  console.log('');
+  console.log('🚂 The app will continue running to allow Railway to deploy');
+  console.log('   but Slack functionality will not work until credentials are added.');
+}
+
 // Use ExpressReceiver for HTTP mode and OAuth
 const receiver = new ExpressReceiver({
-  signingSecret: config.slack.signingSecret,
-  clientId: config.slack.clientId,
-  clientSecret: config.slack.clientSecret,
-  stateSecret: config.slack.stateSecret,
+  signingSecret: config.slack.signingSecret || 'placeholder',
+  clientId: config.slack.clientId || 'placeholder',
+  clientSecret: config.slack.clientSecret || 'placeholder',
+  stateSecret: config.slack.stateSecret || 'fallback-secret',
   scopes: [
     'app_mentions:read',
     'channels:history',
@@ -30,7 +44,6 @@ const receiver = new ExpressReceiver({
     'im:write',
     'mpim:history',
     'mpim:read',
-    'search:read',
     'users:read',
     'assistant:write'
   ],

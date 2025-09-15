@@ -18,6 +18,7 @@
     "slash_commands": [
       {
         "command": "/ask",
+        "url": "https://your-domain.railway.app/slack/commands",
         "description": "Ask the AI assistant a question with optional channel context",
         "usage_hint": "your question here",
         "should_escape": false
@@ -44,7 +45,6 @@
         "im:write",
         "mpim:history",
         "mpim:read",
-        "search:read",
         "users:read",
         "assistant:write"
       ]
