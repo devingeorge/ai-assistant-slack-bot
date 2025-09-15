@@ -93,6 +93,16 @@ registerActions(app);
     console.log(`🌐 Server should be accessible on all interfaces`);
     console.log(`🔗 URLs should work at: https://ai-assistant-slack-bot-production.up.railway.app`);
 
+    // Railway Health Check (CRITICAL)
+    receiver.router.get('/health', (req, res) => {
+      res.status(200).send('ok');
+    });
+
+    // Alternative health check paths
+    receiver.router.get('/healthz', (req, res) => {
+      res.status(200).send('ok');
+    });
+
     // Add install success page
     receiver.router.get('/slack/install/success', (req, res) => {
       res.send(`
