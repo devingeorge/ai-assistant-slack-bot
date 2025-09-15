@@ -117,7 +117,7 @@ receiver.router.get('/', (req, res) => {
 
 (async () => {
   try {
-    const port = 8080; // Force 8080 as Railway expects this
+    const port = process.env.PORT || 3000; // Use Railway's port (3000)
     
     // Debug Railway port configuration
     console.log('🚂 Railway Port Debug:');
