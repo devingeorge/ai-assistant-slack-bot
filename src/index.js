@@ -111,6 +111,24 @@ registerActions(app);
       res.json({ status: 'ok', timestamp: new Date().toISOString() });
     });
 
+    // Add root route for testing
+    receiver.router.get('/', (req, res) => {
+      res.send(`
+        <html>
+          <head><title>AI Assistant Slack Bot</title></head>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h1>🤖 AI Assistant Slack Bot</h1>
+            <p>The bot is running successfully!</p>
+            <p><strong>Status:</strong> ✅ Online</p>
+            <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+            <hr>
+            <p><a href="/health">Health Check</a></p>
+            <p><a href="/slack/install">Install to Slack</a></p>
+          </body>
+        </html>
+      `);
+    });
+
     // Graceful shutdown: clear cached state and close Redis connections
     const shutdown = async (signal) => {
       try {
