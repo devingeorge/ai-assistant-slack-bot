@@ -10,6 +10,12 @@ import { clearAllState, redis } from './services/memory.js';
 import { getInstallation, saveInstallation, deleteInstallation } from './services/installations.js';
 
 // Check if we have the required environment variables
+console.log('🔍 Environment Variables Check:');
+console.log('   REDIS_URL:', process.env.REDIS_URL ? 'SET' : 'MISSING');
+console.log('   SLACK_SIGNING_SECRET:', config.slack.signingSecret ? 'SET' : 'MISSING');
+console.log('   GROK_API_KEY:', process.env.GROK_API_KEY ? 'SET' : 'MISSING');
+console.log('');
+
 if (!config.slack.signingSecret) {
   console.error('❌ Missing SLACK_SIGNING_SECRET environment variable');
   console.log('📝 Please set the following environment variables in Railway:');
@@ -18,9 +24,16 @@ if (!config.slack.signingSecret) {
   console.log('   SLACK_SIGNING_SECRET=your-signing-secret');
   console.log('   SLACK_STATE_SECRET=your-random-secret');
   console.log('   GROK_API_KEY=your-grok-api-key');
+  console.log('   REDIS_URL=${{Redis.REDIS_URL}}');
   console.log('');
   console.log('🚂 The app will continue running to allow Railway to deploy');
   console.log('   but Slack functionality will not work until credentials are added.');
+}
+
+if (!process.env.REDIS_URL) {
+  console.error('❌ Missing REDIS_URL environment variable');
+  console.log('📝 Using fallback Redis URL: redis://localhost:6379');
+  console.log('   This will fail in Railway. Please set REDIS_URL=${{Redis.REDIS_URL}}');
 }
 
 // Use ExpressReceiver for HTTP mode and OAuth
