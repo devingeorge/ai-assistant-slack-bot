@@ -23,7 +23,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Railway Health Check (CRITICAL)
+// Railway Health Check (CRITICAL) - multiple paths
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'healthy',
@@ -31,6 +31,15 @@ app.get('/health', (req, res) => {
     port: port,
     uptime: process.uptime()
   });
+});
+
+// Alternative health check paths for Railway
+app.get('/healthz', (req, res) => {
+  res.status(200).send('OK');
+});
+
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
 });
 
 // Railway Build Info Endpoint
@@ -91,8 +100,8 @@ app.post('/slack/commands', (req, res) => {
   });
 });
 
-// Start server with Railway best practices
-const server = app.listen(port, host, () => {
+// Start server with Railway best practices (force IPv4)
+const server = app.listen(port, '0.0.0.0', () => {
   const address = server.address();
   console.log('🚂 Railway-Optimized Server READY!');
   console.log(`📍 Listening on: ${address.address}:${address.port}`);

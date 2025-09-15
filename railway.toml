@@ -3,7 +3,9 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "npm start"
-restartPolicyType = "never"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 60
+restartPolicyType = "always"
 
 [env]
 # These will be set in Railway dashboard
