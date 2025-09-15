@@ -2,7 +2,42 @@
 import Redis from 'ioredis';
 import { config } from '../config.js';
 
-export const redis = new Redis(config.redis.url);
+// Create Redis client with error handling
+let redis;
+try {
+  redis = new Redis(config.redis.url, {
+    connectTimeout: 5000,
+    lazyConnect: true,
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: 2,
+    enableReadyCheck: false,
+    maxRetriesPerRequest: null,
+  });
+  
+  redis.on('error', (err) => {
+    console.warn('Redis connection error:', err.message);
+  });
+  
+  redis.on('connect', () => {
+    console.log('✅ Redis connected successfully');
+  });
+} catch (err) {
+  console.warn('Redis initialization failed:', err.message);
+  // Create a mock redis client for development
+  redis = {
+    setex: () => Promise.resolve(),
+    get: () => Promise.resolve(null),
+    del: () => Promise.resolve(),
+    keys: () => Promise.resolve([]),
+    rpush: () => Promise.resolve(),
+    ltrim: () => Promise.resolve(),
+    expire: () => Promise.resolve(),
+    lrange: () => Promise.resolve([]),
+    quit: () => Promise.resolve(),
+  };
+}
+
+export { redis };
 
 const TTL_SECS = config.redis.memoryTtlDays * 24 * 3600;
 
