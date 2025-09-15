@@ -5,9 +5,18 @@ import OpenAI from 'openai';
 
 const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
 const baseURL = process.env.XAI_BASE_URL || 'https://api.x.ai';
-const client = new OpenAI({ apiKey, baseURL });
+
+// Only create client if we have an API key
+let client = null;
+if (apiKey) {
+  client = new OpenAI({ apiKey, baseURL });
+}
 
 export async function* grokStream({ messages, system }) {
+  if (!client) {
+    throw new Error('Grok API key not configured. Please set GROK_API_KEY or XAI_API_KEY environment variable.');
+  }
+
   const model = process.env.GROK_MODEL || 'grok-2-latest';
   const temperature = Number(process.env.MODEL_TEMPERATURE || 0.3);
 
