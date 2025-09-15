@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node railway-optimized.js",
+    "start": "node src/index.js",
     "test-server": "node test-server.js",
     "rag:db": "psql \"$PG_CONN\" -f rag/schema.sql",
     "rag:ingest": "node rag/ingest.js docs"
