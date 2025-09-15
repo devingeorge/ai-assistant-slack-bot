@@ -462,16 +462,20 @@ app.event('*', async ({ event, client, context }) => {
             }
           }
           
-          // If no channel reference mentioned, ask user to specify
-          const llmStream = getLLMStream();
-          const iter = llmStream({
-            messages: [{ 
-              role: 'user', 
-              content: `To get information about a channel, please mention the channel name with a # symbol. For example: "tell me about #Duke Energy Corporation" or "what can you tell me about #general". You can also use channel IDs like "#C08J6E9PHE1".` 
-            }],
-            system: 'Be helpful and explain how to specify channel names or IDs with # symbols.'
+          // No channel reference - treat as regular conversation
+          const key = convoKey({ team, channel, thread: assistantThreadTs || null, user });
+          await store.addUserTurn(key, prompt);
+
+          const system = buildSystemPrompt({
+            surface: 'assistant',
+            channelContextText: null,
+            docContext: ''
           });
-          
+
+          const history = await store.history(key);
+          const llmStream = getLLMStream();
+          const iter = llmStream({ messages: history, system });
+
           await streamToSlack({ 
             client, 
             channel, 
@@ -482,4 +486,58 @@ app.event('*', async ({ event, client, context }) => {
           return;
         }
       });
-    } 
+    } catch (error) {
+      logger.error('Assistant message error:', error);
+    }
+  });
+
+  // App Home opened
+  app.event('app_home_opened', async ({ event, client }) => {
+    try {
+      await client.views.publish({
+        user_id: event.user,
+        view: {
+          type: 'home',
+          blocks: [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '*Welcome to AI Assistant!* 🤖\n\nI can help you with questions and provide channel-aware assistance.'
+              }
+            },
+            {
+              type: 'divider'
+            },
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '*How to use me:*\n• Send me direct messages\n• Use `/ask` command in channels\n• Mention me with `@AI Assistant` in channels\n• For channel info, use: `tell me about #channel-name`'
+              }
+            },
+            {
+              type: 'divider'
+            },
+            {
+              type: 'actions',
+              elements: [
+                {
+                  type: 'button',
+                  text: {
+                    type: 'plain_text',
+                    text: 'Clear Cache 🧹'
+                  },
+                  action_id: 'clear_cache',
+                  style: 'danger'
+                }
+              ]
+            }
+          ]
+        }
+      });
+    } catch (error) {
+      logger.error('App Home error:', error);
+    }
+  });
+} 

@@ -50,6 +50,62 @@ export function registerActions(app) {
     }
   });
 
+  // Clear cache action from App Home
+  app.action('clear_cache', async ({ ack, body, client }) => {
+    await ack();
+
+    try {
+      const user = body.user?.id;
+      const team = body.team?.id;
+
+      // Clear all user state
+      const { clearAllState } = await import('../services/memory.js');
+      await clearAllState();
+
+      // Send confirmation message
+      await client.chat.postMessage({
+        channel: user,
+        text: '🧹 Cache cleared successfully! All conversation history and state has been reset.'
+      });
+
+      // Update App Home
+      await client.views.publish({
+        user_id: user,
+        view: {
+          type: 'home',
+          blocks: [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '*Welcome to AI Assistant!* 🤖\n\n✅ *Cache cleared successfully!*'
+              }
+            },
+            {
+              type: 'divider'
+            },
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '*How to use me:*\n• Send me direct messages\n• Use `/ask` command in channels\n• Mention me with `@AI Assistant` in channels\n• For channel info, use: `tell me about #channel-name`'
+              }
+            }
+          ]
+        }
+      });
+
+    } catch (error) {
+      const user = body.user?.id;
+      if (user) {
+        await client.chat.postMessage({
+          channel: user,
+          text: `❌ Error clearing cache: ${error.message}`
+        });
+      }
+    }
+  });
+
   // (Optional) Stop button; your inflight map handles the cancel logic elsewhere.
   app.action('stop_generation', async ({ ack }) => {
     await ack();
