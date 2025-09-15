@@ -4,6 +4,14 @@ import express from 'express';
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Debug Railway environment
+console.log('🔧 Railway Environment Debug:');
+console.log(`   PORT: ${process.env.PORT}`);
+console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`   PWD: ${process.env.PWD}`);
+console.log(`   RAILWAY_*: ${JSON.stringify(Object.keys(process.env).filter(k => k.startsWith('RAILWAY')))}`);
+console.log('');
+
 // Parse JSON bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -75,7 +83,7 @@ app.use('*', (req, res) => {
 
 
 // Try different listening approaches
-const server = app.listen(port, (err) => {
+const server = app.listen(port, '0.0.0.0', (err) => {
   if (err) {
     console.error('❌ Server failed to start:', err);
     process.exit(1);
@@ -101,4 +109,28 @@ server.on('error', (err) => {
 
 server.on('listening', () => {
   console.log('✅ Server is now listening for connections');
+  
+  // Self-test the health endpoint
+  const address = server.address();
+  console.log(`🔍 Self-testing health endpoint...`);
+  
+  import('http').then(({ default: http }) => {
+    const healthReq = http.request({
+      hostname: 'localhost',
+      port: address.port,
+      path: '/health',
+      method: 'GET'
+    }, (res) => {
+      console.log(`✅ Self-test result: ${res.statusCode}`);
+      res.on('data', (chunk) => {
+        console.log(`📄 Response: ${chunk}`);
+      });
+    });
+    
+    healthReq.on('error', (err) => {
+      console.log(`❌ Self-test failed: ${err.message}`);
+    });
+    
+    healthReq.end();
+  });
 });
