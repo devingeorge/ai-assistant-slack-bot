@@ -1,0 +1,39 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "never"
+
+[env]
+# These will be set in Railway dashboard
+# Required for multi-tenant mode:
+SLACK_CLIENT_ID = ""
+SLACK_CLIENT_SECRET = ""
+SLACK_SIGNING_SECRET = ""
+SLACK_STATE_SECRET = ""
+
+# AI Provider (choose one)
+GROK_API_KEY = ""
+# OR
+XAI_API_KEY = ""
+# OR fallback to
+GEMINI_API_KEY = ""
+
+# Database
+REDIS_URL = "${{Redis.REDIS_URL}}"
+
+# Feature flags
+FEAT_CHANNEL_CONTEXT = "true"
+FEAT_RECENT_MESSAGES = "true"
+FEAT_RAG = "false"
+FEAT_DATA_ACCESS = "true"
+
+# Memory settings
+ASSISTANT_THREAD_TTL_SECONDS = "86400"
+ASSISTANT_CONTEXT_TTL_SECONDS = "1800"
+MEMORY_TURNS = "16"
+MEMORY_TTL_DAYS = "14"
+
+# Server
+PORT = "${{PORT}}"

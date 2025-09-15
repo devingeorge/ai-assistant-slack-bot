@@ -1,0 +1,22 @@
+// src/services/prompt.js
+// Central place to build system prompts + guardrails.
+
+export function buildSystemPrompt({ surface, channelContextText, docContext }) {
+  const base =
+    surface === 'channel'
+      ? 'You are a helpful Slack assistant. Keep replies concise and answer in the thread.'
+      : 'You are a Slack assistant in the Assistant panel. Be brief, conversational, and helpful.';
+
+  const guardrails = [
+    'If you are unsure, say you do not know and offer next steps.',
+    'Prefer short paragraphs and bullet points.',
+    'Never fabricate internal policy; if docs context is provided, cite or summarize it.'
+  ];
+
+  const sections = [base, `Rules:\n- ${guardrails.join('\n- ')}`];
+
+  if (channelContextText) sections.push(`Slack context:\n${channelContextText}`);
+  if (docContext) sections.push(`Docs context:\n${docContext}`);
+
+  return sections.join('\n\n');
+}

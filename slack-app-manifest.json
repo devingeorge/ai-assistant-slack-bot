@@ -1,0 +1,71 @@
+{
+  "display_information": {
+    "name": "AI Assistant Bot",
+    "description": "Channel-aware AI assistant powered by Grok that understands context and can summarize conversations",
+    "background_color": "#2c2d30",
+    "long_description": "An intelligent Slack bot that provides channel-aware assistance using Grok AI. Features include: channel context understanding, conversation summarization, direct message support, and seamless integration with Slack's Assistant pane."
+  },
+  "features": {
+    "app_home": {
+      "home_tab_enabled": true,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "bot_user": {
+      "display_name": "AI Assistant",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/ask",
+        "description": "Ask the AI assistant a question with optional channel context",
+        "usage_hint": "your question here",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "redirect_urls": [
+      "https://your-domain.railway.app/slack/oauth_redirect"
+    ],
+    "scopes": {
+      "bot": [
+        "app_mentions:read",
+        "channels:history",
+        "channels:join",
+        "channels:read",
+        "chat:write",
+        "chat:write.public",
+        "commands",
+        "groups:history",
+        "groups:read",
+        "im:history",
+        "im:read",
+        "im:write",
+        "mpim:history",
+        "mpim:read",
+        "search:read",
+        "users:read",
+        "assistant:write"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://your-domain.railway.app/slack/events",
+      "bot_events": [
+        "app_mention",
+        "assistant_thread_context_changed",
+        "assistant_thread_started",
+        "message.im"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://your-domain.railway.app/slack/interactive"
+    },
+    "org_deploy_enabled": true,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
