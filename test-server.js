@@ -70,11 +70,11 @@ app.post('/slack/commands', (req, res) => {
   });
 });
 
-// Catch-all route for debugging
-app.use('*', (req, res) => {
-  console.log(`🔍 Catch-all route hit: ${req.method} ${req.originalUrl}`);
-  res.status(200).json({
-    message: 'Server is working',
+// 404 handler for debugging (remove problematic catch-all)
+app.use((req, res) => {
+  console.log(`🔍 404 handler: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    message: 'Not found',
     method: req.method,
     url: req.originalUrl,
     timestamp: new Date().toISOString()

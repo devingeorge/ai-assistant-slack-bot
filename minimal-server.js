@@ -122,8 +122,8 @@ app.get('/test', (req, res) => {
   });
 });
 
-// Catch-all for debugging
-app.use('*', (req, res) => {
+// Catch-all for debugging (use proper syntax)
+app.all('*', (req, res) => {
   console.log(`🔍 Catch-all: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     error: 'Not found',
