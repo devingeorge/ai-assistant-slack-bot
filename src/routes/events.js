@@ -277,7 +277,8 @@ app.event('*', async ({ event, client, context }) => {
     const system = buildSystemPrompt({
       surface: 'channel',
       channelContextText: effectiveChannelContext || null,
-      docContext
+      docContext,
+      userMessage: prompt
     });
 
     const history = await store.history(key);
@@ -579,7 +580,8 @@ app.event('*', async ({ event, client, context }) => {
           const system = buildSystemPrompt({
             surface: 'assistant',
             channelContextText: null,
-            docContext: ''
+            docContext: '',
+            userMessage: userText
           });
 
           const history = await store.history(key);

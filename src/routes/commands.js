@@ -97,7 +97,8 @@ export function registerCommands(app) {
       const system = buildSystemPrompt({
         surface: 'channel',
         channelContextText,
-        docContext
+        docContext,
+        userMessage: text
       });
 
       const history = await store.history(key);
