@@ -7,6 +7,8 @@ import { homeView, jiraSetupModal } from '../ui/views.js';
 import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/jira.js';
 
 export function registerActions(app) {
+  console.log('🎯 Registering action handlers...');
+  
   // App Home → Clear cached history
   app.action('reset_memory', async ({ ack, body, client, context }) => {
     await ack();
@@ -109,6 +111,7 @@ export function registerActions(app) {
 
   // Jira setup button
   app.action('setup_jira', async ({ ack, body, client }) => {
+    console.log('🚨 SETUP_JIRA ACTION TRIGGERED!', { user: body.user?.id, team: body.team?.id });
     await ack();
     
     console.log('🔧 Jira setup button clicked', { user: body.user?.id, team: body.team?.id });
