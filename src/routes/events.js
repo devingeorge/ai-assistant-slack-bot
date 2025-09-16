@@ -614,12 +614,14 @@ app.event('*', async ({ event, client, context }) => {
       const { getJiraConfig } = await import('../services/jira.js');
       const jiraConfig = await getJiraConfig(teamId);
       
-      console.log('🏠 App Home opened:', { 
+      console.log('🏠 App Home opened DEBUG:', { 
         userId, 
         teamId, 
         isAdmin, 
         hasJiraConfig: !!jiraConfig,
-        jiraBaseUrl: jiraConfig?.baseUrl 
+        jiraConfigFull: jiraConfig,
+        jiraBaseUrl: jiraConfig?.baseUrl,
+        jiraProject: jiraConfig?.defaultProject
       });
       
       await client.views.publish({

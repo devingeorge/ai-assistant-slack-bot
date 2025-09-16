@@ -9,15 +9,45 @@ import { logger } from '../lib/logger.js';
 export async function getJiraConfig(teamId) {
   try {
     const key = `jira:${teamId}`;
+    console.log('🔍 Getting Jira config for key:', key);
+    
     const configData = await redis.get(key);
+    console.log('🔍 Raw Redis data:', configData);
     
     if (!configData) {
+      console.log('🔍 No Jira config found for team:', teamId);
+      
+      // Fallback: check if there are ANY jira keys in Redis
+      const allJiraKeys = await redis.keys('jira:*');
+      console.log('🔍 All Jira keys in Redis:', allJiraKeys);
+      
+      if (allJiraKeys.length > 0) {
+        console.log('🔍 Found Jira configs but not for this team ID - potential mismatch');
+        // Try the first one as a fallback (for debugging)
+        const fallbackData = await redis.get(allJiraKeys[0]);
+        if (fallbackData) {
+          const fallbackConfig = JSON.parse(fallbackData);
+          console.log('🔍 Fallback config from', allJiraKeys[0], ':', {
+            baseUrl: fallbackConfig.baseUrl,
+            project: fallbackConfig.defaultProject
+          });
+        }
+      }
+      
       return null;
     }
     
-    return JSON.parse(configData);
+    const parsedConfig = JSON.parse(configData);
+    console.log('🔍 Parsed Jira config:', { 
+      baseUrl: parsedConfig.baseUrl, 
+      project: parsedConfig.defaultProject,
+      hasApiToken: !!parsedConfig.apiToken 
+    });
+    
+    return parsedConfig;
   } catch (error) {
     logger.error('Failed to get Jira config:', error);
+    console.error('🔍 Jira config error details:', error);
     return null;
   }
 }
@@ -26,7 +56,18 @@ export async function getJiraConfig(teamId) {
 export async function saveJiraConfig(teamId, config) {
   try {
     const key = `jira:${teamId}`;
+    console.log('💾 Saving Jira config for key:', key);
+    console.log('💾 Config being saved:', { 
+      baseUrl: config.baseUrl,
+      project: config.defaultProject,
+      issueType: config.defaultIssueType 
+    });
+    
     await redis.setex(key, 365 * 24 * 3600, JSON.stringify(config)); // 1 year TTL
+    
+    // Verify it was saved
+    const verification = await redis.get(key);
+    console.log('💾 Verification read:', verification ? 'SUCCESS' : 'FAILED');
     
     logger.info(`Jira config saved for team ${teamId}`, { 
       baseUrl: config.baseUrl,
@@ -36,6 +77,7 @@ export async function saveJiraConfig(teamId, config) {
     return true;
   } catch (error) {
     logger.error('Failed to save Jira config:', error);
+    console.error('💾 Save error details:', error);
     return false;
   }
 }
