@@ -190,13 +190,14 @@ app.event('*', async ({ event, client, context }) => {
     if (message.subtype || !message.text) return;
     if (event.channel_type !== 'im') return;
 
-    const team = context.teamId || event.team;
-    const channel = event.channel;
-    const user = message.user;
-    const userText = String(message.text || '').slice(0, config.limits?.maxUserChars ?? 4000);
+    try {
+      const team = context.teamId || event.team;
+      const channel = event.channel;
+      const user = message.user;
+      const userText = String(message.text || '').slice(0, config.limits?.maxUserChars ?? 4000);
 
-    // Anchor to the Assistant pane thread if we have it
-    const assistantThreadTs = await getAssistantThread(channel);
+      // Anchor to the Assistant pane thread if we have it
+      const assistantThreadTs = await getAssistantThread(channel);
 
     // Optional UI status
     if (assistantThreadTs) {
