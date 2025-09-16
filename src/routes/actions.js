@@ -131,13 +131,22 @@ export function registerActions(app) {
       }
       
       // Open Jira setup modal
+      console.log('📋 Opening Jira setup modal for user:', user);
+      console.log('🎯 Trigger ID:', body.trigger_id);
+      
+      const modalView = jiraSetupModal();
+      console.log('📝 Modal view created:', JSON.stringify(modalView, null, 2));
+      
       await client.views.open({
         trigger_id: body.trigger_id,
-        view: jiraSetupModal()
+        view: modalView
       });
       
+      console.log('✅ Modal opened successfully');
+      
     } catch (error) {
-      console.error('Jira setup error:', error);
+      console.error('❌ Jira setup error:', error);
+      console.error('Error details:', error.data || error.message);
     }
   });
 
