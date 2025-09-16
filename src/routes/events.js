@@ -33,10 +33,29 @@ function resolveViewedChannelId(ctx) {
 }
 
 /** Streaming helper. If initialText is null, first token creates the message (Assistant pane UX). */
-async function streamToSlack({ client, channel, thread_ts, iter, initialText = 'Thinking…' }) {
+async function streamToSlack({ client, channel, thread_ts, iter, initialText = 'Thinking…', stopAction = null }) {
   let ts = null;
   let buf = '';
   let last = 0;
+
+  // Prepare stop button blocks if requested
+  const stopBlocks = stopAction ? [
+    {
+      type: 'section',
+      text: { type: 'mrkdwn', text: '*Generating response...*' }
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Stop' },
+          action_id: stopAction,
+          style: 'danger'
+        }
+      ]
+    }
+  ] : undefined;
 
   try {
     for await (const chunk of iter) {
@@ -46,7 +65,8 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
         const posted = await slackCall(client.chat.postMessage, {
           channel,
           thread_ts,
-          text: initialText == null ? buf.slice(0, 3900) : initialText
+          text: initialText == null ? buf.slice(0, 3900) : initialText,
+          blocks: stopBlocks
         });
         ts = posted.ts;
         last = initialText == null ? Date.now() : 0;
@@ -54,13 +74,24 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
 
       const now = Date.now();
       if (now - last > 700) {
-        await slackCall(client.chat.update, { channel, ts, text: buf.slice(0, 3900) });
+        await slackCall(client.chat.update, { 
+          channel, 
+          ts, 
+          text: buf.slice(0, 3900),
+          blocks: stopBlocks // Keep stop button during generation
+        });
         last = now;
       }
     }
 
     if (ts) {
-      await slackCall(client.chat.update, { channel, ts, text: buf.slice(0, 3900) });
+      // Final update - remove stop button when complete
+      await slackCall(client.chat.update, { 
+        channel, 
+        ts, 
+        text: buf.slice(0, 3900),
+        blocks: [] // Remove stop button when done
+      });
     }
   } catch (e) {
     logger.warn('streamToSlack error:', e?.data || e?.message || e);
@@ -173,15 +204,13 @@ app.event('*', async ({ event, client, context }) => {
     const llmStream = getLLMStream();
     const iter = llmStream({ messages: history, system });
 
-    // Keep Stop button for channel threads (remove if you never want it)
-    await slackCall(client.chat.postEphemeral, { channel, user, text: 'Generating…', blocks: stopBlocks });
-
     await streamToSlack({
       client,
       channel,
       thread_ts,
       iter,
-      initialText: 'Thinking…'
+      initialText: 'Thinking…',
+      stopAction: 'stop_generation' // Enable stop button in the actual response
     });
   });
 

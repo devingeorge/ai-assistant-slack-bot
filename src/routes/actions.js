@@ -106,8 +106,28 @@ export function registerActions(app) {
     }
   });
 
-  // (Optional) Stop button; your inflight map handles the cancel logic elsewhere.
-  app.action('stop_generation', async ({ ack }) => {
+  // Stop button action
+  app.action('stop_generation', async ({ ack, body, client }) => {
     await ack();
+    
+    try {
+      const user = body.user?.id;
+      const channel = body.channel?.id;
+      const messageTs = body.message?.ts;
+      
+      if (messageTs) {
+        // Update the message to show it was stopped
+        await client.chat.update({
+          channel,
+          ts: messageTs,
+          text: '⏹️ Generation stopped by user.',
+          blocks: []
+        });
+        
+        console.log(`🛑 Generation stopped by user ${user} in ${channel}`);
+      }
+    } catch (error) {
+      console.error('Stop button error:', error);
+    }
   });
 }
