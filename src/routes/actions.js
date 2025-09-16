@@ -111,6 +111,8 @@ export function registerActions(app) {
   app.action('setup_jira', async ({ ack, body, client }) => {
     await ack();
     
+    console.log('🔧 Jira setup button clicked', { user: body.user?.id, team: body.team?.id });
+    
     try {
       const user = body.user?.id;
       const teamId = body.team?.id;
