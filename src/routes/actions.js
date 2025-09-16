@@ -38,9 +38,19 @@ export function registerActions(app) {
       });
 
       // 4) Re-render Home tab with proper context
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const userInfo = await client.users.info({ user });
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
       const jiraConfig = await getJiraConfig(team);
+      
+      console.log('🏠 Updating App Home after reset memory:', { 
+        user, 
+        team, 
+        isAdmin, 
+        hasJiraConfig: !!jiraConfig,
+        jiraBaseUrl: jiraConfig?.baseUrl 
+      });
       
       await client.views.publish({
         user_id: user,
@@ -75,10 +85,20 @@ export function registerActions(app) {
         text: '🧹 Cache cleared successfully! All conversation history and state has been reset.\n\n✅ Your Jira integration settings are preserved and remain active.'
       });
 
-      // Update App Home with proper context
+      // Update App Home with proper context (add small delay to ensure Redis consistency)
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const userInfo = await client.users.info({ user });
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
       const jiraConfig = await getJiraConfig(team);
+      
+      console.log('🏠 Updating App Home after clear cache:', { 
+        user, 
+        team, 
+        isAdmin, 
+        hasJiraConfig: !!jiraConfig,
+        jiraBaseUrl: jiraConfig?.baseUrl 
+      });
       
       await client.views.publish({
         user_id: user,

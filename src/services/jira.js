@@ -92,7 +92,7 @@ export async function createJiraTicket(teamId, ticketData) {
         project: { key: config.defaultProject },
         summary: ticketData.summary,
         description: ticketData.description,
-        issuetype: { name: ticketData.issueType || config.defaultIssueType || 'Task' },
+        issuetype: { name: config.defaultIssueType || ticketData.issueType || 'Task' },
         ...(ticketData.priority && { priority: { name: ticketData.priority } }),
         ...(ticketData.assignee && { assignee: { name: ticketData.assignee } }),
         ...(ticketData.labels && { labels: ticketData.labels })
@@ -116,9 +116,23 @@ export async function createJiraTicket(teamId, ticketData) {
     };
   } catch (error) {
     logger.error('Failed to create Jira ticket:', error);
+    
+    // Extract more helpful error messages from Jira API
+    let errorMessage = 'Failed to create ticket';
+    if (error.response?.data?.errorMessages) {
+      errorMessage = error.response.data.errorMessages.join(', ');
+    } else if (error.response?.data?.errors) {
+      const errors = Object.entries(error.response.data.errors)
+        .map(([field, msg]) => `${field}: ${msg}`)
+        .join(', ');
+      errorMessage = errors;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return {
       success: false,
-      error: error.message || 'Failed to create ticket'
+      error: errorMessage
     };
   }
 }
