@@ -6,6 +6,7 @@ import { retrieveContext, initRagIfNeeded } from '../services/rag.js';
 import { buildSystemPrompt } from '../services/prompt.js';
 import { slackCall } from '../lib/slackRetry.js';
 import { getLLMStream } from '../services/llm.js';
+import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 
 /** Small stream helper for slash commands. */
 async function streamToSlack({ client, channel, thread_ts, iter, initialText = 'Thinking…' }) {
@@ -116,6 +117,79 @@ export function registerCommands(app) {
           channel: command.channel_id,
           user: command.user_id,
           text: `Sorry — I couldn’t process /ask. (${err?.data?.error || err?.message || 'unknown error'})`
+        });
+      } catch {}
+    }
+  });
+
+  /**
+   * /jira — create a Jira ticket from a description
+   */
+  app.command('/jira', async ({ ack, command, client, context }) => {
+    // Acknowledge immediately to avoid timeout
+    await ack('🎫 Creating Jira ticket...');
+
+    try {
+      const team = context.teamId || command.team_id;
+      const channel = command.channel_id;
+      const user = command.user_id;
+      const text = String(command.text || '').trim();
+
+      if (!text) {
+        await slackCall(client.chat.postEphemeral, {
+          channel,
+          user,
+          text: '⚠️ Please provide a description for the Jira ticket.\nExample: `/jira Fix login bug - users cannot sign in`'
+        });
+        return;
+      }
+
+      // Check if Jira is configured
+      const jiraConfig = await getJiraConfig(team);
+      if (!jiraConfig) {
+        await slackCall(client.chat.postEphemeral, {
+          channel,
+          user,
+          text: '⚠️ Jira is not configured for this workspace. Please set it up in the App Home first.'
+        });
+        return;
+      }
+
+      // Get recent messages for context
+      let recentMessages = [];
+      try {
+        const { getRecentMessages } = await import('../services/slackdata.js');
+        const hist = await getRecentMessages(client, channel, { limit: 5 });
+        if (hist.ok && hist.messages.length) {
+          recentMessages = hist.messages;
+        }
+      } catch {}
+
+      // Extract ticket information
+      const ticketData = extractTicketFromContext(text, recentMessages);
+
+      // Create the ticket
+      const result = await createJiraTicket(team, ticketData);
+
+      if (result.success) {
+        await slackCall(client.chat.postMessage, {
+          channel,
+          thread_ts: command.thread_ts,
+          text: `✅ Jira ticket created successfully!\n🎫 *${result.ticket.key}*: ${result.ticket.summary}\n🔗 <${result.ticket.url}|View ticket>`
+        });
+      } else {
+        await slackCall(client.chat.postEphemeral, {
+          channel,
+          user,
+          text: `❌ Failed to create Jira ticket: ${result.error}`
+        });
+      }
+    } catch (err) {
+      try {
+        await slackCall(client.chat.postEphemeral, {
+          channel: command.channel_id,
+          user: command.user_id,
+          text: `❌ Sorry — I couldn't create the Jira ticket. (${err?.message || 'unknown error'})`
         });
       } catch {}
     }
