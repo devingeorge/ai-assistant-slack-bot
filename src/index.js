@@ -95,6 +95,13 @@ console.log('🔍 ExpressReceiver routes after setup:', receiver.router.stack?.l
 receiver.router.use((req, res, next) => {
   if (req.path.includes('/slack/')) {
     console.log(`🌐 Request: ${req.method} ${req.path}`);
+    
+    // Check if this is an interactive request
+    if (req.path === '/slack/interactive') {
+      console.log('📋 Interactive request headers:', JSON.stringify(req.headers, null, 2));
+      console.log('🔑 SLACK_SIGNING_SECRET configured:', !!config.slack.signingSecret);
+      console.log('🔑 Signing secret value:', config.slack.signingSecret ? 'PRESENT' : 'MISSING');
+    }
   }
   next();
 });
