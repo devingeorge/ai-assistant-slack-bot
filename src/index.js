@@ -51,6 +51,8 @@ const receiver = new ExpressReceiver({
   clientId: config.slack.clientId || 'placeholder',
   clientSecret: config.slack.clientSecret || 'placeholder',
   stateSecret: config.slack.stateSecret || 'fallback-secret',
+  endpoints: '/slack/events',
+  processBeforeResponse: true,
   scopes: [
     'app_mentions:read',
     'channels:history',
