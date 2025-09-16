@@ -1,6 +1,6 @@
 {
   "display_information": {
-    "name": "AI Assistant Bot",
+    "name": "Grok AI",
     "description": "Channel-aware AI assistant powered by Grok that understands context and can summarize conversations",
     "background_color": "#2c2d30",
     "long_description": "An intelligent Slack bot that provides channel-aware assistance using Grok AI. Features include: channel context understanding, conversation summarization, direct message support, and seamless integration with Slack's Assistant pane."
@@ -55,6 +55,7 @@
       "request_url": "https://ai-assistant-slack-bot.onrender.com/slack/events",
       "bot_events": [
         "app_mention",
+        "app_home_opened",
         "assistant_thread_context_changed",
         "assistant_thread_started",
         "message.im"
