@@ -523,47 +523,23 @@ app.event('*', async ({ event, client, context }) => {
   // App Home opened
   app.event('app_home_opened', async ({ event, client }) => {
     try {
+      const userId = event.user;
+      const teamId = event.team || 'unknown';
+      
+      // Check if user is admin
+      const userInfo = await client.users.info({ user: userId });
+      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+      
+      // Get Jira config if admin
+      let jiraConfig = null;
+      if (isAdmin) {
+        const { getJiraConfig } = await import('../services/jira.js');
+        jiraConfig = await getJiraConfig(teamId);
+      }
+      
       await client.views.publish({
-        user_id: event.user,
-        view: {
-          type: 'home',
-          blocks: [
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: '*Welcome to AI Assistant!* 🤖\n\nI can help you with questions and provide channel-aware assistance.'
-              }
-            },
-            {
-              type: 'divider'
-            },
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: '*How to use me:*\n• Send me direct messages\n• Use `/ask` command in channels\n• Mention me with `@AI Assistant` in channels\n• For channel info, use: `tell me about #channel-name`'
-              }
-            },
-            {
-              type: 'divider'
-            },
-            {
-              type: 'actions',
-              elements: [
-                {
-                  type: 'button',
-                  text: {
-                    type: 'plain_text',
-                    text: 'Clear Cache 🧹'
-                  },
-                  action_id: 'clear_cache',
-                  style: 'danger'
-                }
-              ]
-            }
-          ]
-        }
+        user_id: userId,
+        view: homeView(isAdmin, jiraConfig)
       });
     } catch (error) {
       logger.error('App Home error:', error);
