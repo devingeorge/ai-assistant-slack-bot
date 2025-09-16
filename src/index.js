@@ -89,15 +89,8 @@ registerCommands(app);
 registerActions(app);
 
 // Add debugging for ALL /slack routes
-receiver.router.use('/slack/*', (req, res, next) => {
+receiver.router.use('/slack*', (req, res, next) => {
   console.log('🌐 Slack request received:', req.method, req.url);
-  console.log('📋 Headers:', JSON.stringify(req.headers, null, 2));
-  next();
-});
-
-// Test endpoint to verify routing
-receiver.router.post('/slack/interactive', (req, res, next) => {
-  console.log('🎯 Direct interactive test - request received');
   next();
 });
 
