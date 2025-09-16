@@ -81,7 +81,18 @@ const receiver = new ExpressReceiver({
 
 const app = new App({
   receiver,
-  logLevel: LogLevel.INFO
+  logLevel: LogLevel.DEBUG,
+  ignoreSelf: false
+});
+
+// Add Slack Bolt middleware to debug what's happening
+app.use(async ({ body, payload, next }) => {
+  console.log('🔥 Slack Bolt middleware triggered!');
+  console.log('📦 Body type:', typeof body);
+  console.log('📦 Payload type:', typeof payload);
+  if (body) console.log('📦 Body keys:', Object.keys(body));
+  if (payload) console.log('📦 Payload keys:', Object.keys(payload));
+  await next();
 });
 
 registerEvents(app);
