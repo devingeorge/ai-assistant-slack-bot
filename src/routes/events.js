@@ -13,7 +13,7 @@ import { getChannelInfo, getRecentMessages, tryJoin } from '../services/slackdat
 import { buildSystemPrompt } from '../services/prompt.js';
 import { slackCall } from '../lib/slackRetry.js';
 import { logger } from '../lib/logger.js';
-import { stopBlocks } from '../ui/views.js';
+import { stopBlocks, homeView } from '../ui/views.js';
 import { getLLMStream } from '../services/llm.js';
 import { assistantSearchContext, formatResultsAsBullets } from '../services/dataAccess.js';
 import { detectIntent } from '../services/intent.js';
