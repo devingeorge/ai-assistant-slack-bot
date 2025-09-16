@@ -465,7 +465,7 @@ app.event('*', async ({ event, client, context }) => {
           
           // No channel reference - treat as regular conversation
           const key = convoKey({ team, channel, thread: assistantThreadTs || null, user });
-          await store.addUserTurn(key, prompt);
+          await store.addUserTurn(key, userText);
 
           const system = buildSystemPrompt({
             surface: 'assistant',
