@@ -88,12 +88,6 @@ registerEvents(app);
 registerCommands(app);
 registerActions(app);
 
-// Add debugging for ALL /slack routes
-receiver.router.use('/slack*', (req, res, next) => {
-  console.log('🌐 Slack request received:', req.method, req.url);
-  next();
-});
-
 // Railway Health Check (CRITICAL) - BEFORE app.start()
 receiver.router.get('/health', (req, res) => {
   res.status(200).send('ok');
