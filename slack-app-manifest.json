@@ -24,7 +24,7 @@
         "should_escape": false
       },
       {
-        "command": "/jira",
+        "command": "/ticket",
         "url": "https://ai-assistant-slack-bot.onrender.com/slack/commands",
         "description": "Create a Jira ticket from a description",
         "usage_hint": "ticket description",

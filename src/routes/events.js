@@ -17,6 +17,7 @@ import { stopBlocks, homeView } from '../ui/views.js';
 import { getLLMStream } from '../services/llm.js';
 import { assistantSearchContext, formatResultsAsBullets } from '../services/dataAccess.js';
 import { detectIntent } from '../services/intent.js';
+import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 
 /** Resolve the channel the user is viewing in the Assistant panel (if present). */
 function resolveViewedChannelId(ctx) {
@@ -124,13 +125,84 @@ app.event('*', async ({ event, client, context }) => {
     await setAssistantContextForUser(userId, ctx);
   });
 
-  // @mentions in channels — optional Stop button + normal chat behavior
+  // @mentions in channels — check for ticket creation or normal chat behavior
   app.event('app_mention', async ({ event, client, context }) => {
     const team = context.teamId || event.team;
     const thread_ts = event.thread_ts || event.ts;
     const channel = event.channel;
     const user = event.user;
     const prompt = (event.text || '').replace(/<@[^>]+>\s*/, '').trim().slice(0, config.limits?.maxUserChars ?? 4000);
+
+    // Check if this is a ticket creation request
+    const ticketKeywords = ['create ticket', 'make ticket', 'ticket for', 'file ticket', 'log ticket', 'create jira', 'make jira'];
+    const isTicketRequest = ticketKeywords.some(keyword => 
+      prompt.toLowerCase().includes(keyword.toLowerCase())
+    );
+
+    if (isTicketRequest) {
+      // Handle ticket creation
+      try {
+        const jiraConfig = await getJiraConfig(team);
+        if (!jiraConfig) {
+          await slackCall(client.chat.postMessage, {
+            channel,
+            thread_ts,
+            text: '⚠️ Jira is not configured for this workspace. Please set it up in the App Home first.'
+          });
+          return;
+        }
+
+        // Get recent messages for context
+        let recentMessages = [];
+        try {
+          const hist = await getRecentMessages(client, channel, { limit: 5 });
+          if (hist.ok && hist.messages.length) {
+            recentMessages = hist.messages;
+          }
+        } catch {}
+
+        // Extract the ticket description (remove the ticket creation keywords)
+        let ticketDescription = prompt;
+        for (const keyword of ticketKeywords) {
+          ticketDescription = ticketDescription.replace(new RegExp(keyword, 'gi'), '').trim();
+        }
+        
+        if (!ticketDescription) {
+          await slackCall(client.chat.postMessage, {
+            channel,
+            thread_ts,
+            text: '⚠️ Please provide a description for the ticket.\nExample: `@GrokAI create ticket for login bug - users cannot authenticate`'
+          });
+          return;
+        }
+
+        // Extract ticket information and create it
+        const ticketData = extractTicketFromContext(ticketDescription, recentMessages);
+        const result = await createJiraTicket(team, ticketData);
+
+        if (result.success) {
+          await slackCall(client.chat.postMessage, {
+            channel,
+            thread_ts,
+            text: `✅ Jira ticket created successfully!\n🎫 *${result.ticket.key}*: ${result.ticket.summary}\n🔗 <${result.ticket.url}|View ticket>`
+          });
+        } else {
+          await slackCall(client.chat.postMessage, {
+            channel,
+            thread_ts,
+            text: `❌ Failed to create Jira ticket: ${result.error}`
+          });
+        }
+        return;
+      } catch (error) {
+        await slackCall(client.chat.postMessage, {
+          channel,
+          thread_ts,
+          text: `❌ Error creating ticket: ${error.message}`
+        });
+        return;
+      }
+    }
 
     const key = convoKey({ team, channel, thread: thread_ts, user });
     await store.addUserTurn(key, prompt);

@@ -4,8 +4,8 @@
 export function buildSystemPrompt({ surface, channelContextText, docContext }) {
   const base =
     surface === 'channel'
-      ? 'You are a helpful Slack assistant. Keep replies concise and answer in the thread.'
-      : 'You are a Slack assistant in the Assistant panel. Be brief, conversational, and helpful.';
+      ? 'You are a helpful Slack assistant. Keep replies concise and answer in the thread. You can help users create Jira tickets by suggesting they use "/ticket [description]" or "@mention me with create ticket [description]".'
+      : 'You are a Slack assistant in the Assistant panel. Be brief, conversational, and helpful. You can help users create Jira tickets by suggesting they use "/ticket [description]" or mention you in a channel with "create ticket [description]".';
 
   const guardrails = [
     'If you are unsure, say you do not know and offer next steps.',

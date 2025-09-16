@@ -123,9 +123,9 @@ export function registerCommands(app) {
   });
 
   /**
-   * /jira — create a Jira ticket from a description
+   * /ticket — create a Jira ticket from a description
    */
-  app.command('/jira', async ({ ack, command, client, context }) => {
+  app.command('/ticket', async ({ ack, command, client, context }) => {
     // Acknowledge immediately to avoid timeout
     await ack('🎫 Creating Jira ticket...');
 
@@ -139,7 +139,7 @@ export function registerCommands(app) {
         await slackCall(client.chat.postEphemeral, {
           channel,
           user,
-          text: '⚠️ Please provide a description for the Jira ticket.\nExample: `/jira Fix login bug - users cannot sign in`'
+          text: '⚠️ Please provide a description for the Jira ticket.\nExample: `/ticket Fix login bug - users cannot sign in`'
         });
         return;
       }
