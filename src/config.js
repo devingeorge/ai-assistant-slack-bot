@@ -34,7 +34,7 @@ export const config = {
   },
   features: {
     channelContext: process.env.FEAT_CHANNEL_CONTEXT !== 'false', // default ON
-    recentMessages: process.env.FEAT_RECENT_MESSAGES === 'true',  // default OFF
+    recentMessages: process.env.FEAT_RECENT_MESSAGES !== 'false', // default ON
     rag: process.env.RAG_ENABLED === 'true',
     dataAccess: process.env.FEAT_DATA_ACCESS === 'true'          // default OFF
   },
