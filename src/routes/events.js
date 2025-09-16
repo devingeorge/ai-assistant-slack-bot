@@ -133,17 +133,26 @@ app.event('*', async ({ event, client, context }) => {
     const user = event.user;
     const prompt = (event.text || '').replace(/<@[^>]+>\s*/, '').trim().slice(0, config.limits?.maxUserChars ?? 4000);
 
-    // Check if this is a ticket creation request
-    const ticketKeywords = ['create ticket', 'make ticket', 'ticket for', 'file ticket', 'log ticket', 'create jira', 'make jira'];
-    const isTicketRequest = ticketKeywords.some(keyword => 
-      prompt.toLowerCase().includes(keyword.toLowerCase())
-    );
+    // Check if this is a ticket creation request (not a question about how to create tickets)
+    const ticketCreationKeywords = ['create ticket', 'make ticket', 'ticket for', 'file ticket', 'log ticket', 'create jira', 'make jira'];
+    const questionKeywords = ['how do i', 'how to', 'what is', 'how can i', 'help me', 'show me', 'explain'];
+    
+    const lowerPrompt = prompt.toLowerCase();
+    const hasTicketKeywords = ticketCreationKeywords.some(keyword => lowerPrompt.includes(keyword));
+    const isQuestion = questionKeywords.some(question => lowerPrompt.includes(question));
+    
+    // Only treat as ticket creation if it has ticket keywords AND is not a question
+    const isTicketRequest = hasTicketKeywords && !isQuestion;
 
-    // Debug: log when ticket creation is triggered
-    if (isTicketRequest) {
-      console.log('🎫 Creating ticket via @mention:', { 
+    // Debug: log ticket detection logic
+    if (hasTicketKeywords) {
+      console.log('🎫 Ticket keyword detection:', { 
         prompt: prompt.slice(0, 100) + '...',
-        matchedKeywords: ticketKeywords.filter(keyword => prompt.toLowerCase().includes(keyword.toLowerCase()))
+        hasTicketKeywords,
+        isQuestion,
+        isTicketRequest,
+        matchedKeywords: ticketCreationKeywords.filter(keyword => lowerPrompt.includes(keyword)),
+        matchedQuestions: questionKeywords.filter(question => lowerPrompt.includes(question))
       });
     }
 
@@ -171,11 +180,15 @@ app.event('*', async ({ event, client, context }) => {
 
         // Extract the ticket description (remove the ticket creation keywords)
         let ticketDescription = prompt;
-        for (const keyword of ticketKeywords) {
+        for (const keyword of ticketCreationKeywords) {
+          // Replace the keyword but preserve connecting words like "for", "about", etc.
           ticketDescription = ticketDescription.replace(new RegExp(keyword, 'gi'), '').trim();
         }
         
-        if (!ticketDescription) {
+        // Clean up extra whitespace and common connecting words at the start
+        ticketDescription = ticketDescription.replace(/^(for|about|regarding|on|:|-)+\s*/i, '').trim();
+        
+        if (!ticketDescription || ticketDescription.length < 3) {
           await slackCall(client.chat.postMessage, {
             channel,
             thread_ts,
