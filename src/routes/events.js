@@ -601,10 +601,17 @@ app.event('*', async ({ event, client, context }) => {
   });
 
   // App Home opened
-  app.event('app_home_opened', async ({ event, client }) => {
+  app.event('app_home_opened', async ({ event, client, context }) => {
     try {
       const userId = event.user;
-      const teamId = event.team || 'unknown';
+      const teamId = context.teamId || event.team_id || event.team || 'unknown';
+      
+      console.log('🏠 App Home team ID sources:', {
+        'context.teamId': context.teamId,
+        'event.team_id': event.team_id, 
+        'event.team': event.team,
+        'final teamId': teamId
+      });
       
       // Check if user is admin
       const userInfo = await client.users.info({ user: userId });
