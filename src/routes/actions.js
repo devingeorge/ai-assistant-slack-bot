@@ -68,34 +68,17 @@ export function registerActions(app) {
       // Send confirmation message
       await client.chat.postMessage({
         channel: user,
-        text: '🧹 Cache cleared successfully! All conversation history and state has been reset.'
+        text: '🧹 Cache cleared successfully! All conversation history and state has been reset.\n\n✅ Your Jira integration settings are preserved and remain active.'
       });
 
-      // Update App Home
+      // Update App Home with proper context
+      const userInfo = await client.users.info({ user });
+      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+      const jiraConfig = await getJiraConfig(team);
+      
       await client.views.publish({
         user_id: user,
-        view: {
-          type: 'home',
-          blocks: [
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: '*Welcome to AI Assistant!* 🤖\n\n✅ *Cache cleared successfully!*'
-              }
-            },
-            {
-              type: 'divider'
-            },
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: '*How to use me:*\n• Send me direct messages\n• Use `/ask` command in channels\n• Mention me with `@AI Assistant` in channels\n• For channel info, use: `tell me about #channel-name`'
-              }
-            }
-          ]
-        }
+        view: homeView(isAdmin, jiraConfig)
       });
 
     } catch (error) {
