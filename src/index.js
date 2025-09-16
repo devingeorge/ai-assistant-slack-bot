@@ -51,8 +51,6 @@ const receiver = new ExpressReceiver({
   clientId: config.slack.clientId || 'placeholder',
   clientSecret: config.slack.clientSecret || 'placeholder',
   stateSecret: config.slack.stateSecret || 'fallback-secret',
-  endpoints: '/slack/events',
-  processBeforeResponse: true,
   scopes: [
     'app_mentions:read',
     'channels:history',
@@ -89,6 +87,17 @@ const app = new App({
 registerEvents(app);
 registerCommands(app);
 registerActions(app);
+
+// Test what's available on the receiver after registration
+console.log('🔍 ExpressReceiver routes after setup:', receiver.router.stack?.length || 'Unknown');
+
+// Add a debug route to see what's hitting the server
+receiver.router.use((req, res, next) => {
+  if (req.path.includes('/slack/')) {
+    console.log(`🌐 Request: ${req.method} ${req.path}`);
+  }
+  next();
+});
 
 // Railway Health Check (CRITICAL) - BEFORE app.start()
 receiver.router.get('/health', (req, res) => {
