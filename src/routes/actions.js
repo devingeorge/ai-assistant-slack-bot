@@ -37,10 +37,14 @@ export function registerActions(app) {
           `Please click *New Chat* in the Assistant panel to start a fresh thread.`
       });
 
-      // 4) Re-render Home tab
+      // 4) Re-render Home tab with proper context
+      const userInfo = await client.users.info({ user });
+      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+      const jiraConfig = await getJiraConfig(team);
+      
       await client.views.publish({
         user_id: user,
-        view: homeView()
+        view: homeView(isAdmin, jiraConfig)
       });
     } catch (err) {
       const user = body.user?.id;

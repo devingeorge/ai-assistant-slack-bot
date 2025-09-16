@@ -139,6 +139,15 @@ app.event('*', async ({ event, client, context }) => {
       prompt.toLowerCase().includes(keyword.toLowerCase())
     );
 
+    // Debug logging for ticket detection
+    console.log('🎫 Ticket detection debug:', {
+      originalText: event.text,
+      cleanedPrompt: prompt,
+      keywords: ticketKeywords,
+      isTicketRequest,
+      matchedKeywords: ticketKeywords.filter(keyword => prompt.toLowerCase().includes(keyword.toLowerCase()))
+    });
+
     if (isTicketRequest) {
       // Handle ticket creation
       try {
