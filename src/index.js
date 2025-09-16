@@ -88,6 +88,13 @@ registerEvents(app);
 registerCommands(app);
 registerActions(app);
 
+// Add debugging for interactive requests
+receiver.router.use('/slack/interactive', (req, res, next) => {
+  console.log('🎯 Interactive request received:', req.method, req.url);
+  console.log('🔑 Request body type:', typeof req.body);
+  next();
+});
+
 // Railway Health Check (CRITICAL) - BEFORE app.start()
 receiver.router.get('/health', (req, res) => {
   res.status(200).send('ok');
