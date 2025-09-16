@@ -10,7 +10,9 @@ export function buildSystemPrompt({ surface, channelContextText, docContext }) {
   const guardrails = [
     'If you are unsure, say you do not know and offer next steps.',
     'Prefer short paragraphs and bullet points.',
-    'Never fabricate internal policy; if docs context is provided, cite or summarize it.'
+    'Never fabricate internal policy; if docs context is provided, cite or summarize it.',
+    'IMPORTANT: Do not repeat or summarize previous messages in the conversation. Only answer the current question.',
+    'Do not echo back what the user just said or previous Q&As unless specifically asked to recall something.'
   ];
 
   const sections = [base, `Rules:\n- ${guardrails.join('\n- ')}`];
