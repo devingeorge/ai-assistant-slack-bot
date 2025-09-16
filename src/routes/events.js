@@ -610,12 +610,17 @@ app.event('*', async ({ event, client, context }) => {
       const userInfo = await client.users.info({ user: userId });
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
       
-      // Get Jira config if admin
-      let jiraConfig = null;
-      if (isAdmin) {
-        const { getJiraConfig } = await import('../services/jira.js');
-        jiraConfig = await getJiraConfig(teamId);
-      }
+      // Always get Jira config to show proper status (admin controls are separate)
+      const { getJiraConfig } = await import('../services/jira.js');
+      const jiraConfig = await getJiraConfig(teamId);
+      
+      console.log('🏠 App Home opened:', { 
+        userId, 
+        teamId, 
+        isAdmin, 
+        hasJiraConfig: !!jiraConfig,
+        jiraBaseUrl: jiraConfig?.baseUrl 
+      });
       
       await client.views.publish({
         user_id: userId,
