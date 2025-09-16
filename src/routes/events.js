@@ -486,7 +486,6 @@ app.event('*', async ({ event, client, context }) => {
           });
           return;
         }
-      });
     } catch (error) {
       logger.error('Assistant message error:', error);
     }
