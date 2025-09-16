@@ -7,9 +7,17 @@ import { homeView, jiraSetupModal } from '../ui/views.js';
 import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/jira.js';
 
 export function registerActions(app) {
+  // Debug: Catch all actions
+  app.action(/./, async ({ ack, action, body }) => {
+    console.log('🔍 Unmatched action received:', action.action_id);
+    console.log('📋 Full action:', JSON.stringify(action, null, 2));
+  });
+
   // App Home → Clear cached history
   app.action('reset_memory', async ({ ack, body, client, context }) => {
+    console.log('🗑️ reset_memory action handler called!');
     await ack();
+    console.log('✅ Reset memory acknowledged');
 
     try {
       const team = context.teamId || body?.team?.id;
@@ -109,7 +117,10 @@ export function registerActions(app) {
 
   // Jira setup button
   app.action('setup_jira', async ({ ack, body, client }) => {
+    console.log('🎯 setup_jira action handler called!');
+    console.log('📋 Action body:', JSON.stringify(body, null, 2));
     await ack();
+    console.log('✅ Action acknowledged');
     
     try {
       const user = body.user?.id;
