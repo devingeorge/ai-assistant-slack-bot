@@ -74,13 +74,16 @@ export async function deleteInstallation(installQuery) {
     const key = `installation:${enterpriseId || 'none'}:${teamId}`;
     await redis.del(key);
     
-    // Also clear any cached data for this team
-    const teamKeys = await redis.keys(`*:${teamId}:*`);
-    if (teamKeys.length > 0) {
-      await redis.del(...teamKeys);
+    // Also clear any cached data for this team (but NOT installation data)
+    const patterns = [`convo:${teamId}:*`, `assistant_thread:${teamId}:*`, `assistant_ctx:${teamId}:*`];
+    for (const pattern of patterns) {
+      const keys = await redis.keys(pattern);
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
     }
     
-    logger.info('Deleted installation and team data:', { teamId, enterpriseId, deletedKeys: teamKeys.length });
+    logger.info('Deleted installation and team data:', { teamId, enterpriseId });
   } catch (error) {
     logger.error('Failed to delete installation:', error);
     throw error;
