@@ -53,7 +53,12 @@
         "mpim:history",
         "mpim:read",
         "users:read",
-        "assistant:write"
+        "assistant:write",
+        "search:read.public",
+        "search:read.private",
+        "search:read.mpim",
+        "search:read.im",
+        "search:read.files"
       ]
     }
   },
@@ -65,7 +70,10 @@
         "app_home_opened",
         "assistant_thread_context_changed",
         "assistant_thread_started",
-        "message.im"
+        "message.im",
+        "message.channels",
+        "message.groups",
+        "message.mpim"
       ]
     },
     "interactivity": {

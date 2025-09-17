@@ -18,6 +18,7 @@ import { getLLMStream } from '../services/llm.js';
 import { assistantSearchContext, formatResultsAsBullets } from '../services/dataAccess.js';
 import { detectIntent } from '../services/intent.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
+import { findMatchingTrigger } from '../services/triggers.js';
 
 /** Resolve the channel the user is viewing in the Assistant panel (if present). */
 function resolveViewedChannelId(ctx) {
@@ -225,6 +226,17 @@ app.event('*', async ({ event, client, context }) => {
       }
     }
 
+    // Check for dynamic action triggers first (bypass AI)
+    const matchingTrigger = await findMatchingTrigger(team, user, prompt);
+    if (matchingTrigger) {
+      await slackCall(client.chat.postMessage, {
+        channel,
+        thread_ts,
+        text: `⚡ ${matchingTrigger.response}`
+      });
+      return;
+    }
+
     const key = convoKey({ team, channel, thread: thread_ts, user });
     await store.addUserTurn(key, prompt);
 
@@ -335,6 +347,21 @@ app.event('*', async ({ event, client, context }) => {
           logger.warn('assistant.threads.setStatus failed:', err?.data || err?.message);
         }
       }
+    }
+
+    // Check for dynamic action triggers first (bypass AI) 
+    const matchingTrigger = await findMatchingTrigger(team, user, userText);
+    if (matchingTrigger) {
+      await streamToSlack({
+        client,
+        channel,
+        thread_ts: assistantThreadTs || undefined,
+        iter: (async function* () {
+          yield `⚡ ${matchingTrigger.response}`;
+        })(),
+        initialText: null
+      });
+      return;
     }
 
     const key = convoKey({ team, channel, thread: null, user });

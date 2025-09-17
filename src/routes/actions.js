@@ -3,8 +3,21 @@ import {
   clearAllUserState,
   deleteAssistantThread
 } from '../services/memory.js';
-import { homeView, jiraSetupModal } from '../ui/views.js';
+import { 
+  homeView, 
+  jiraSetupModal, 
+  addTriggerModal, 
+  manageTriggerModal, 
+  importTemplatesModal 
+} from '../ui/views.js';
 import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/jira.js';
+import { 
+  saveTrigger, 
+  getPersonalTriggers, 
+  deleteTrigger, 
+  toggleTrigger, 
+  importTemplates 
+} from '../services/triggers.js';
 
 export function registerActions(app) {
   // Remove catch-all debug handler to prevent spam
@@ -256,6 +269,257 @@ export function registerActions(app) {
       }
     } catch (error) {
       console.error('Stop button error:', error);
+    }
+  });
+
+  // ==================== TRIGGER ACTIONS ====================
+
+  // Add Trigger button
+  app.action('add_trigger', async ({ ack, body, client }) => {
+    await ack();
+    
+    try {
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: addTriggerModal()
+      });
+    } catch (error) {
+      console.error('Add trigger modal error:', error);
+    }
+  });
+
+  // Manage Triggers button
+  app.action('manage_triggers', async ({ ack, body, client, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const triggers = await getPersonalTriggers(teamId, userId);
+      
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: manageTriggerModal(triggers)
+      });
+    } catch (error) {
+      console.error('Manage triggers modal error:', error);
+    }
+  });
+
+  // Import Templates button
+  app.action('import_templates', async ({ ack, body, client }) => {
+    await ack();
+    
+    try {
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: importTemplatesModal()
+      });
+    } catch (error) {
+      console.error('Import templates modal error:', error);
+    }
+  });
+
+  // Trigger overflow menu actions
+  app.action(/^trigger_actions_(.+)$/, async ({ ack, body, client, context, action }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      const triggerId = action.action_id.split('_')[2];
+      const selectedValue = action.selected_option?.value;
+      
+      if (!selectedValue) return;
+      
+      const [actionType, targetId] = selectedValue.split('_');
+      
+      const userInfo = await client.users.info({ user: userId });
+      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+      
+      switch (actionType) {
+        case 'edit':
+          // Get trigger data and open edit modal
+          const triggers = await getPersonalTriggers(teamId, userId);
+          const triggerToEdit = triggers.find(t => t.id === targetId);
+          
+          if (triggerToEdit) {
+            await client.views.open({
+              trigger_id: body.trigger_id,
+              view: addTriggerModal(triggerToEdit)
+            });
+          }
+          break;
+          
+        case 'delete':
+          const deleteResult = await deleteTrigger(teamId, userId, targetId, isAdmin);
+          
+          if (deleteResult.success) {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: '✅ Trigger deleted successfully!'
+            });
+            
+            // Refresh the manage modal
+            const updatedTriggers = await getPersonalTriggers(teamId, userId);
+            await client.views.update({
+              view_id: body.view?.id,
+              view: manageTriggerModal(updatedTriggers)
+            });
+          } else {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: `❌ Failed to delete trigger: ${deleteResult.error}`
+            });
+          }
+          break;
+          
+        case 'toggle':
+          const toggleResult = await toggleTrigger(teamId, userId, targetId, isAdmin);
+          
+          if (toggleResult.success) {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: `✅ Trigger ${toggleResult.enabled ? 'enabled' : 'disabled'}`
+            });
+            
+            // Refresh the manage modal
+            const refreshedTriggers = await getPersonalTriggers(teamId, userId);
+            await client.views.update({
+              view_id: body.view?.id,
+              view: manageTriggerModal(refreshedTriggers)
+            });
+          } else {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: `❌ Failed to toggle trigger: ${toggleResult.error}`
+            });
+          }
+          break;
+      }
+    } catch (error) {
+      console.error('Trigger action error:', error);
+    }
+  });
+
+  // Add/Edit Trigger modal submission
+  app.view('add_trigger', async ({ ack, body, client, view }) => {
+    await ack();
+    
+    try {
+      const teamId = body.team?.id;
+      const userId = body.user?.id;
+      
+      const userInfo = await client.users.info({ user: userId });
+      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+      
+      // Extract form values
+      const values = view.state.values;
+      const metadata = JSON.parse(view.private_metadata || '{}');
+      
+      const triggerData = {
+        id: metadata.id, // Will be undefined for new triggers
+        name: values.trigger_name.name_input.value,
+        inputPhrases: values.trigger_input.input_phrases.value
+          .split(',')
+          .map(phrase => phrase.trim())
+          .filter(phrase => phrase.length > 0),
+        response: values.trigger_response.response_text.value,
+        scope: values.trigger_scope?.scope_select?.selected_option?.value || 'personal'
+      };
+      
+      // Validate input
+      if (!triggerData.name || !triggerData.inputPhrases.length || !triggerData.response) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '❌ Please fill in all required fields (name, input phrases, and response)'
+        });
+        return;
+      }
+      
+      const result = await saveTrigger(teamId, userId, triggerData, isAdmin);
+      
+      if (result.success) {
+        const action = metadata.action === 'edit' ? 'updated' : 'created';
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `✅ Trigger "${triggerData.name}" ${action} successfully!`
+        });
+        
+        // Refresh App Home to show updated trigger count
+        const jiraConfig = await getJiraConfig(teamId);
+        await client.views.publish({
+          user_id: userId,
+          view: homeView(isAdmin, jiraConfig)
+        });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to save trigger: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Add trigger submission error:', error);
+    }
+  });
+
+  // Import Templates modal submission
+  app.view('import_templates', async ({ ack, body, client, view }) => {
+    await ack();
+    
+    try {
+      const teamId = body.team?.id;
+      const userId = body.user?.id;
+      
+      const userInfo = await client.users.info({ user: userId });
+      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+      
+      const values = view.state.values;
+      const selectedTemplates = values.template_selection?.template_checkboxes?.selected_options?.map(
+        option => option.value
+      ) || [];
+      
+      if (selectedTemplates.length === 0) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '❌ Please select at least one template to import'
+        });
+        return;
+      }
+      
+      const result = await importTemplates(teamId, userId, selectedTemplates, isAdmin);
+      
+      if (result.success) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `✅ Successfully imported ${result.imported} triggers!${result.failed > 0 ? ` (${result.failed} failed)` : ''}`
+        });
+        
+        // Refresh App Home
+        const jiraConfig = await getJiraConfig(teamId);
+        await client.views.publish({
+          user_id: userId,
+          view: homeView(isAdmin, jiraConfig)
+        });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to import templates: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Import templates submission error:', error);
     }
   });
 }
