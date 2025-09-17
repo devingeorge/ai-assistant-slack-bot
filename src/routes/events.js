@@ -227,14 +227,19 @@ app.event('*', async ({ event, client, context }) => {
     }
 
     // Check for dynamic action triggers first (bypass AI)
-    const matchingTrigger = await findMatchingTrigger(team, user, prompt);
-    if (matchingTrigger) {
-      await slackCall(client.chat.postMessage, {
-        channel,
-        thread_ts,
-        text: `⚡ ${matchingTrigger.response}`
-      });
-      return;
+    try {
+      const matchingTrigger = await findMatchingTrigger(team, user, prompt);
+      if (matchingTrigger) {
+        await slackCall(client.chat.postMessage, {
+          channel,
+          thread_ts,
+          text: `⚡ ${matchingTrigger.response}`
+        });
+        return;
+      }
+    } catch (error) {
+      logger.warn('Trigger check failed in @mention, continuing with AI:', error);
+      // Continue with normal AI processing if trigger check fails
     }
 
     const key = convoKey({ team, channel, thread: thread_ts, user });
@@ -350,18 +355,23 @@ app.event('*', async ({ event, client, context }) => {
     }
 
     // Check for dynamic action triggers first (bypass AI) 
-    const matchingTrigger = await findMatchingTrigger(team, user, userText);
-    if (matchingTrigger) {
-      await streamToSlack({
-        client,
-        channel,
-        thread_ts: assistantThreadTs || undefined,
-        iter: (async function* () {
-          yield `⚡ ${matchingTrigger.response}`;
-        })(),
-        initialText: null
-      });
-      return;
+    try {
+      const matchingTrigger = await findMatchingTrigger(team, user, userText);
+      if (matchingTrigger) {
+        await streamToSlack({
+          client,
+          channel,
+          thread_ts: assistantThreadTs || undefined,
+          iter: (async function* () {
+            yield `⚡ ${matchingTrigger.response}`;
+          })(),
+          initialText: null
+        });
+        return;
+      }
+    } catch (error) {
+      logger.warn('Trigger check failed, continuing with AI:', error);
+      // Continue with normal AI processing if trigger check fails
     }
 
     const key = convoKey({ team, channel, thread: null, user });
