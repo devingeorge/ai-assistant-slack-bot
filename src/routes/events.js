@@ -110,11 +110,14 @@ app.event('*', async ({ event, client, context }) => {
 });
   // Cache the assistant thread root so replies land in the Assistant pane
   app.event('assistant_thread_started', async ({ event }) => {
+    console.log('🎯 Assistant thread started event:', JSON.stringify(event, null, 2));
     const channelId = event?.assistant_thread?.channel_id;
     const threadTs  = event?.assistant_thread?.thread_ts;
     if (channelId && threadTs) {
       await setAssistantThread(channelId, threadTs);
       logger.info('Cached assistant thread:', { channelId, threadTs });
+    } else {
+      console.log('⚠️ Assistant thread event missing channelId or threadTs');
     }
   });
 

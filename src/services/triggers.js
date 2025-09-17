@@ -51,6 +51,14 @@ export async function saveTrigger(teamId, userId, triggerData, isAdmin = false) 
     await store.set(key, triggers);
     logger.info('Trigger saved:', { teamId, userId, triggerId: trigger.id, scope });
     
+    // Debug: verify what was saved
+    const savedTriggers = await store.get(key);
+    console.log('💾 Trigger Save Debug:', {
+      key,
+      savedCount: savedTriggers?.length || 0,
+      savedTriggers: savedTriggers?.map(t => ({ id: t.id, name: t.name, phrases: t.inputPhrases }))
+    });
+    
     return { success: true, trigger };
   } catch (error) {
     logger.error('Error saving trigger:', error);
@@ -138,6 +146,16 @@ export async function findMatchingTrigger(teamId, userId, inputText) {
   try {
     const triggers = await getTriggers(teamId, userId);
     const normalizedInput = inputText.toLowerCase().trim();
+    
+    // Debug logging
+    console.log('🔍 Trigger Debug:', {
+      teamId,
+      userId,
+      inputText: inputText.slice(0, 50),
+      normalizedInput,
+      triggersFound: triggers.length,
+      triggers: triggers.map(t => ({ id: t.id, name: t.name, phrases: t.inputPhrases }))
+    });
     
     for (const trigger of triggers) {
       for (const phrase of trigger.inputPhrases) {
