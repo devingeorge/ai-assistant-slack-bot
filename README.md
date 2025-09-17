@@ -4,17 +4,27 @@ A channel-aware AI assistant bot for Slack powered by Grok AI that understands c
 
 ## ✨ Features
 
+- **Dynamic Action Triggers**: Create instant-response triggers that bypass AI for common questions
 - **Channel Awareness**: Understands channel context, topics, and recent conversations
 - **Multi-tenant SaaS**: Can be installed in unlimited Slack workspaces
 - **Assistant Pane Integration**: Works seamlessly with Slack's Assistant pane
 - **Conversation Summarization**: Provides intelligent channel summaries
 - **Direct Messages**: Supports both DMs and channel mentions
 - **Data Access API**: Leverages Slack's search capabilities for enhanced context
+- **Jira Integration**: Create tickets directly from conversations
+- **Template Library**: Pre-built trigger templates for common use cases
 - **Configurable Memory**: Adjustable conversation history and context retention
 
 ## 🚀 Quick Deploy
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/your-template-id)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+**One-click Render deployment:** See [`RENDER_DEPLOY.md`](./RENDER_DEPLOY.md) for detailed instructions.
+
+**Quick deploy script:**
+```bash
+./deploy-to-render.sh
+```
 
 ## 🛠️ Installation Options
 
@@ -80,22 +90,42 @@ MEMORY_TTL_DAYS=14
 
 ## 💬 Usage
 
+### Dynamic Action Triggers ⚡
+Create instant responses for common questions that bypass AI processing:
+
+**In App Home:**
+- **➕ Add Trigger** - Create custom instant responses
+- **📝 Manage Triggers** - Edit, delete, or toggle existing triggers  
+- **📋 Import Templates** - Quick-start with pre-built triggers
+
+**Example Triggers:**
+```
+Input: "office hours", "what time", "when open"
+Response: 🕒 Our office hours are Monday-Friday, 9:00 AM to 5:00 PM EST.
+
+Input: "wifi password", "network", "internet"  
+Response: 📶 Network: Company-WiFi | Guest: Company-Guest | Contact IT for credentials
+```
+
 ### In Channels
 - **@mention**: `@AI Assistant what's the latest on the project?`
 - **With context**: Bot automatically understands channel topic and recent messages
+- **Instant triggers**: Common questions get immediate ⚡ responses
 
 ### In Direct Messages
 - **General chat**: `Hello! How can you help me?`
 - **Channel queries**: `tell me about #general`
 - **Channel IDs**: `what's happening in #C1234567890`
+- **Quick answers**: Triggers work in DMs too
 
 ### Assistant Pane
 - Open the Assistant pane in any channel
 - Ask questions about the current channel context
 - Get intelligent summaries and insights
 
-### Slash Command
+### Slash Commands
 - `/ask your question here` - Ask questions with optional channel context
+- `/ticket description` - Create Jira tickets from conversations
 
 ## 🏗️ Architecture
 
