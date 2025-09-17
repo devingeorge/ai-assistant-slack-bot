@@ -11,7 +11,10 @@ export const config = {
     clientId: process.env.SLACK_CLIENT_ID,
     clientSecret: process.env.SLACK_CLIENT_SECRET,
     signingSecret: process.env.SLACK_SIGNING_SECRET,
-    stateSecret: process.env.SLACK_STATE_SECRET || 'your-state-secret-here',
+    stateSecret: process.env.SLACK_STATE_SECRET || (() => {
+      console.warn('⚠️  SLACK_STATE_SECRET not set, generating a random one. This may cause OAuth issues in production!');
+      return 'fallback-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    })(),
   },
   groq: {
     apiKey: process.env.GROQ_API_KEY,

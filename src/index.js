@@ -21,7 +21,10 @@ console.log('🟢 Services imported');
 // Check if we have the required environment variables
 console.log('🔍 Environment Variables Check:');
 console.log('   REDIS_URL:', process.env.REDIS_URL ? 'SET' : 'MISSING');
+console.log('   SLACK_CLIENT_ID:', config.slack.clientId ? 'SET' : 'MISSING');
+console.log('   SLACK_CLIENT_SECRET:', config.slack.clientSecret ? 'SET' : 'MISSING');
 console.log('   SLACK_SIGNING_SECRET:', config.slack.signingSecret ? 'SET' : 'MISSING');
+console.log('   SLACK_STATE_SECRET:', process.env.SLACK_STATE_SECRET ? 'SET' : 'MISSING (using fallback)');
 console.log('   GROK_API_KEY:', process.env.GROK_API_KEY ? 'SET' : 'MISSING');
 console.log('');
 
@@ -110,8 +113,49 @@ receiver.router.use((req, res, next) => {
       console.log('🔑 SLACK_SIGNING_SECRET configured:', !!config.slack.signingSecret);
       console.log('🔑 Signing secret value:', config.slack.signingSecret ? 'PRESENT' : 'MISSING');
     }
+    
+    // Check if this is an OAuth callback
+    if (req.path === '/slack/oauth_redirect') {
+      console.log('🔐 OAuth callback received');
+      console.log('🔑 State secret configured:', !!config.slack.stateSecret);
+      console.log('🔑 State secret value:', config.slack.stateSecret ? 'PRESENT' : 'MISSING');
+    }
   }
   next();
+});
+
+// Add OAuth error handling middleware
+receiver.router.use((error, req, res, next) => {
+  if (error.code === 'slack_oauth_invalid_state') {
+    console.error('❌ OAuth State Error Details:');
+    console.error('   Error:', error.message);
+    console.error('   State Secret:', config.slack.stateSecret ? 'CONFIGURED' : 'MISSING');
+    console.error('   Environment SLACK_STATE_SECRET:', process.env.SLACK_STATE_SECRET ? 'SET' : 'MISSING');
+    console.error('   Request URL:', req.url);
+    console.error('   Request Query:', req.query);
+    
+    res.status(400).send(`
+      <html>
+        <head><title>OAuth Error</title></head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+          <h1>❌ OAuth Installation Error</h1>
+          <p><strong>Error:</strong> Invalid state parameter</p>
+          <p>This usually happens when the SLACK_STATE_SECRET environment variable is not properly configured.</p>
+          <h3>To fix this:</h3>
+          <ol style="text-align: left; display: inline-block;">
+            <li>Go to your Render dashboard</li>
+            <li>Add environment variable: <code>SLACK_STATE_SECRET</code></li>
+            <li>Set it to a random string (e.g., <code>my-random-secret-12345</code>)</li>
+            <li>Redeploy your service</li>
+            <li>Try the installation again</li>
+          </ol>
+          <p><a href="/slack/install">Try Installation Again</a></p>
+        </body>
+      </html>
+    `);
+  } else {
+    next(error);
+  }
 });
 
 // Railway Health Check (CRITICAL) - BEFORE app.start()

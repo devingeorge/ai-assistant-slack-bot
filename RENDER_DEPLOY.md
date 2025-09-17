@@ -41,7 +41,7 @@ In your Render web service dashboard, add these environment variables:
 SLACK_CLIENT_ID=your-slack-client-id
 SLACK_CLIENT_SECRET=your-slack-client-secret  
 SLACK_SIGNING_SECRET=your-slack-signing-secret
-SLACK_STATE_SECRET=your-random-secret-string
+SLACK_STATE_SECRET=your-random-secret-string-here
 
 # AI Provider (choose one)
 GROK_API_KEY=your-grok-api-key
@@ -55,6 +55,25 @@ REDIS_URL=redis://your-render-redis-url-here
 
 # Environment
 NODE_ENV=production
+```
+
+### ⚠️ Important: SLACK_STATE_SECRET
+The `SLACK_STATE_SECRET` is **critical** for OAuth to work properly. It should be:
+- A random string (e.g., `my-secret-key-12345-abcdef`)
+- **Different from your signing secret**
+- **Consistent** across deployments (don't change it once set)
+- **At least 16 characters long**
+
+**Generate a secure one:**
+```bash
+# Option 1: Use openssl
+openssl rand -base64 32
+
+# Option 2: Use node
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+# Option 3: Use online generator
+# Visit: https://www.uuidgenerator.net/
 ```
 
 ### Optional Feature Flags
@@ -136,22 +155,33 @@ Should return: `{"status":"healthy","timestamp":"..."}`
 
 ### Common Issues
 
-**1. Build Failures**
+**1. OAuth State Parameter Error** ❌
+```
+Error: The state parameter is not for this browser session
+```
+**Solution:**
+- Add `SLACK_STATE_SECRET` environment variable in Render
+- Generate a secure random string (see above)
+- Redeploy your service
+- Try installation again
+
+**2. Build Failures**
 - Check Node.js version compatibility in `package.json`
 - Ensure all dependencies are properly listed
 
-**2. Environment Variable Issues**
+**3. Environment Variable Issues**
 ```bash
 # Check if variables are set correctly
 curl https://your-service-name.onrender.com/health
 ```
 
-**3. Slack Connection Issues**
+**4. Slack Connection Issues**
 - Verify all URLs in manifest match your Render service
 - Check signing secret matches exactly
 - Ensure app is reinstalled after manifest changes
+- **Most importantly**: Ensure `SLACK_STATE_SECRET` is set
 
-**4. Redis Connection**
+**5. Redis Connection**
 - Verify `REDIS_URL` is correct
 - Check if Redis service is running in Render dashboard
 
