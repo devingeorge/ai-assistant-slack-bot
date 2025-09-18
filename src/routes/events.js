@@ -11,6 +11,7 @@ import { store } from '../services/store.js';
 import { retrieveContext, initRagIfNeeded } from '../services/rag.js';
 import { getChannelInfo, getRecentMessages, tryJoin } from '../services/slackdata.js';
 import { buildSystemPrompt } from '../services/prompt.js';
+import { getAgentSettings } from '../services/agentSettings.js';
 import { slackCall } from '../lib/slackRetry.js';
 import { logger } from '../lib/logger.js';
 import { stopBlocks, homeView } from '../ui/views.js';
@@ -290,11 +291,15 @@ app.event('*', async ({ event, client, context }) => {
       .filter(Boolean)
       .join('\n\nData Access context (most relevant first):\n');
 
+    // Get user's agent settings
+    const agentSettings = await getAgentSettings(team, user);
+    
     const system = buildSystemPrompt({
       surface: 'channel',
       channelContextText: effectiveChannelContext || null,
       docContext,
-      userMessage: prompt
+      userMessage: prompt,
+      agentSettings
     });
 
     const history = await store.history(key);
@@ -599,11 +604,15 @@ app.event('*', async ({ event, client, context }) => {
           const key = convoKey({ team, channel, thread: assistantThreadTs || null, user });
           await store.addUserTurn(key, userText);
 
+          // Get user's agent settings
+          const agentSettings = await getAgentSettings(team, user);
+          
           const system = buildSystemPrompt({
             surface: 'assistant',
             channelContextText: null,
             docContext: '',
-            userMessage: userText
+            userMessage: userText,
+            agentSettings
           });
 
           const history = await store.history(key);
@@ -639,10 +648,12 @@ app.event('*', async ({ event, client, context }) => {
       const { getJiraConfig } = await import('../services/jira.js');
       const jiraConfig = await getJiraConfig(teamId);
       
+      // Get user's agent settings
+      const agentSettings = await getAgentSettings(teamId, userId);
       
       await client.views.publish({
         user_id: userId,
-        view: homeView(isAdmin, jiraConfig)
+        view: homeView(isAdmin, jiraConfig, agentSettings)
       });
     } catch (error) {
       logger.error('App Home error:', error);

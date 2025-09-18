@@ -4,6 +4,7 @@ import { convoKey } from '../services/memory.js';
 import { store } from '../services/store.js';
 import { retrieveContext, initRagIfNeeded } from '../services/rag.js';
 import { buildSystemPrompt } from '../services/prompt.js';
+import { getAgentSettings } from '../services/agentSettings.js';
 import { slackCall } from '../lib/slackRetry.js';
 import { getLLMStream } from '../services/llm.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
@@ -94,11 +95,15 @@ export function registerCommands(app) {
         } catch {}
       }
 
+      // Get user's agent settings
+      const agentSettings = await getAgentSettings(team, user);
+      
       const system = buildSystemPrompt({
         surface: 'channel',
         channelContextText,
         docContext,
-        userMessage: text
+        userMessage: text,
+        agentSettings
       });
 
       const history = await store.history(key);

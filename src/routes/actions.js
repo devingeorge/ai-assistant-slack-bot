@@ -8,7 +8,8 @@ import {
   jiraSetupModal, 
   addTriggerModal, 
   manageTriggerModal, 
-  importTemplatesModal 
+  importTemplatesModal,
+  agentSettingsModal 
 } from '../ui/views.js';
 import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/jira.js';
 import { 
@@ -20,6 +21,10 @@ import {
   toggleTrigger, 
   importTemplates 
 } from '../services/triggers.js';
+import { 
+  getAgentSettings, 
+  saveAgentSettings 
+} from '../services/agentSettings.js';
 
 export function registerActions(app) {
   // Remove catch-all debug handler to prevent spam
@@ -58,11 +63,11 @@ export function registerActions(app) {
       const userInfo = await client.users.info({ user });
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
       const jiraConfig = await getJiraConfig(team);
-      
+      const agentSettings = await getAgentSettings(team, user);
       
       await client.views.publish({
         user_id: user,
-        view: homeView(isAdmin, jiraConfig)
+        view: homeView(isAdmin, jiraConfig, agentSettings)
       });
     } catch (err) {
       const user = body.user?.id;
@@ -99,11 +104,11 @@ export function registerActions(app) {
       const userInfo = await client.users.info({ user });
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
       const jiraConfig = await getJiraConfig(team);
-      
+      const agentSettings = await getAgentSettings(team, user);
       
       await client.views.publish({
         user_id: user,
-        view: homeView(isAdmin, jiraConfig)
+        view: homeView(isAdmin, jiraConfig, agentSettings)
       });
 
     } catch (error) {
@@ -212,10 +217,11 @@ export function registerActions(app) {
         const userInfo = await client.users.info({ user });
         const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
         const jiraConfig = await getJiraConfig(teamId);
+        const agentSettings = await getAgentSettings(teamId, user);
         
         await client.views.publish({
           user_id: user,
-          view: homeView(isAdmin, jiraConfig)
+          view: homeView(isAdmin, jiraConfig, agentSettings)
         });
       } else {
         await client.chat.postEphemeral({
@@ -510,9 +516,10 @@ export function registerActions(app) {
           });
           
           const jiraConfig = await getJiraConfig(teamId);
+          const agentSettings = await getAgentSettings(teamId, userId);
           await client.views.publish({
             user_id: userId,
-            view: homeView(isAdmin, jiraConfig)
+            view: homeView(isAdmin, jiraConfig, agentSettings)
           });
         }
       } else {
@@ -531,6 +538,78 @@ export function registerActions(app) {
           trigger_name: 'An error occurred while saving the trigger'
         }
       });
+    }
+  });
+
+  // Configure Agent action
+  app.action('configure_agent', async ({ ack, body, client, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      // Get current agent settings
+      const currentSettings = await getAgentSettings(teamId, userId);
+      
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: agentSettingsModal(currentSettings)
+      });
+    } catch (error) {
+      console.error('Configure agent error:', error);
+    }
+  });
+
+  // Agent Settings modal submission
+  app.view('agent_settings', async ({ ack, body, client, view, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      // Extract form values
+      const values = view.state.values;
+      
+      const agentSettings = {
+        tone: values.tone_setting.tone_select.selected_option?.value || 'professional',
+        companyType: values.company_type_setting.company_type_select.selected_option?.value || 'general',
+        specialty: values.specialty_setting.specialty_input.value || '',
+        responseLength: values.response_length_setting.response_length_select.selected_option?.value || 'balanced',
+        languageStyle: values.language_style_setting.language_style_select.selected_option?.value || 'conversational',
+        customInstructions: values.custom_instructions_setting.custom_instructions_input.value || ''
+      };
+      
+      // Save agent settings
+      const result = await saveAgentSettings(teamId, userId, agentSettings);
+      
+      if (result.success) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '✅ Agent settings saved successfully! Your AI assistant will now use these preferences.'
+        });
+        
+        // Refresh App Home to show updated settings
+        const userInfo = await client.users.info({ user: userId });
+        const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+        const jiraConfig = await getJiraConfig(teamId);
+        const updatedSettings = await getAgentSettings(teamId, userId);
+        
+        await client.views.publish({
+          user_id: userId,
+          view: homeView(isAdmin, jiraConfig, updatedSettings)
+        });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to save agent settings: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Agent settings submission error:', error);
     }
   });
 
@@ -570,9 +649,10 @@ export function registerActions(app) {
         
         // Refresh App Home
         const jiraConfig = await getJiraConfig(teamId);
+        const agentSettings = await getAgentSettings(teamId, userId);
         await client.views.publish({
           user_id: userId,
-          view: homeView(isAdmin, jiraConfig)
+          view: homeView(isAdmin, jiraConfig, agentSettings)
         });
       } else {
         await client.chat.postEphemeral({
