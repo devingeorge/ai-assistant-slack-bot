@@ -20,7 +20,7 @@ export const stopBlocks = [
 ];
 
 /** App Home with admin controls and integrations */
-export function homeView(isAdmin = false, jiraConfig = null) {
+export function homeView(isAdmin = false, jiraConfig = null, agentSettings = null) {
   const blocks = [
     {
       type: 'header',
@@ -61,6 +61,79 @@ export function homeView(isAdmin = false, jiraConfig = null) {
           text: jiraConfig ? '⚙️ Update' : '🔗 Set up Jira'
         },
         style: jiraConfig ? 'primary' : 'primary'
+      }
+    });
+  }
+
+  // Add Agent Settings section
+  blocks.push({ type: 'divider' });
+  blocks.push({
+    type: 'header',
+    text: { type: 'plain_text', text: '⚙️ Agent Settings', emoji: true }
+  });
+  
+  // Show current agent settings
+  if (agentSettings) {
+    const { tone, companyType, specialty, responseLength } = agentSettings;
+    
+    const toneLabels = {
+      professional: 'Professional',
+      casual: 'Casual', 
+      friendly: 'Friendly',
+      technical: 'Technical',
+      supportive: 'Supportive'
+    };
+    
+    const companyLabels = {
+      general: 'General Business',
+      tech: 'Technology',
+      manufacturing: 'Manufacturing',
+      healthcare: 'Healthcare',
+      finance: 'Finance',
+      retail: 'Retail',
+      education: 'Education',
+      nonprofit: 'Non-Profit'
+    };
+    
+    const lengthLabels = {
+      brief: 'Brief',
+      balanced: 'Balanced',
+      detailed: 'Detailed'
+    };
+    
+    let settingsText = `*Current Agent Configuration:*\n`;
+    settingsText += `• **Tone:** ${toneLabels[tone] || 'Professional'}\n`;
+    settingsText += `• **Company Type:** ${companyLabels[companyType] || 'General Business'}\n`;
+    settingsText += `• **Response Length:** ${lengthLabels[responseLength] || 'Balanced'}\n`;
+    if (specialty && specialty.trim()) {
+      settingsText += `• **Specialty:** ${specialty}\n`;
+    }
+    
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: settingsText
+      },
+      accessory: {
+        type: 'button',
+        action_id: 'configure_agent',
+        text: { type: 'plain_text', text: '⚙️ Configure Agent' },
+        style: 'primary'
+      }
+    });
+  } else {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '*Customize your AI assistant*\nSet tone, company type, specialty, and response style to personalize your experience.'
+      },
+      accessory: {
+        type: 'button',
+        action_id: 'configure_agent',
+        text: { type: 'plain_text', text: '⚙️ Configure Agent' },
+        style: 'primary'
       }
     });
   }
@@ -275,6 +348,137 @@ export function manageTriggerModal(triggers = []) {
     title: { type: 'plain_text', text: 'Manage Triggers' },
     close: { type: 'plain_text', text: 'Close' },
     blocks
+  };
+}
+
+/** Agent Settings Modal */
+export function agentSettingsModal(currentSettings = null) {
+  const toneOptions = [
+    { text: { type: 'plain_text', text: 'Professional' }, value: 'professional' },
+    { text: { type: 'plain_text', text: 'Casual' }, value: 'casual' },
+    { text: { type: 'plain_text', text: 'Friendly' }, value: 'friendly' },
+    { text: { type: 'plain_text', text: 'Technical' }, value: 'technical' },
+    { text: { type: 'plain_text', text: 'Supportive' }, value: 'supportive' }
+  ];
+  
+  const companyTypeOptions = [
+    { text: { type: 'plain_text', text: 'General Business' }, value: 'general' },
+    { text: { type: 'plain_text', text: 'Technology' }, value: 'tech' },
+    { text: { type: 'plain_text', text: 'Manufacturing' }, value: 'manufacturing' },
+    { text: { type: 'plain_text', text: 'Healthcare' }, value: 'healthcare' },
+    { text: { type: 'plain_text', text: 'Finance' }, value: 'finance' },
+    { text: { type: 'plain_text', text: 'Retail' }, value: 'retail' },
+    { text: { type: 'plain_text', text: 'Education' }, value: 'education' },
+    { text: { type: 'plain_text', text: 'Non-Profit' }, value: 'nonprofit' }
+  ];
+  
+  const responseLengthOptions = [
+    { text: { type: 'plain_text', text: 'Brief' }, value: 'brief' },
+    { text: { type: 'plain_text', text: 'Balanced' }, value: 'balanced' },
+    { text: { type: 'plain_text', text: 'Detailed' }, value: 'detailed' }
+  ];
+  
+  const languageStyleOptions = [
+    { text: { type: 'plain_text', text: 'Conversational' }, value: 'conversational' },
+    { text: { type: 'plain_text', text: 'Formal' }, value: 'formal' },
+    { text: { type: 'plain_text', text: 'Technical' }, value: 'technical' }
+  ];
+
+  return {
+    type: 'modal',
+    callback_id: 'agent_settings',
+    title: { type: 'plain_text', text: 'Configure Agent' },
+    submit: { type: 'plain_text', text: 'Save Settings' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '⚙️ *Customize Your AI Assistant*\nPersonalize how the AI responds to match your needs and preferences.'
+        }
+      },
+      {
+        type: 'input',
+        block_id: 'tone_setting',
+        label: { type: 'plain_text', text: 'Tone' },
+        element: {
+          type: 'static_select',
+          action_id: 'tone_select',
+          placeholder: { type: 'plain_text', text: 'Select tone...' },
+          options: toneOptions,
+          initial_option: toneOptions.find(opt => opt.value === (currentSettings?.tone || 'professional'))
+        },
+        hint: { type: 'plain_text', text: 'How the AI should communicate' }
+      },
+      {
+        type: 'input',
+        block_id: 'company_type_setting',
+        label: { type: 'plain_text', text: 'Company Type' },
+        element: {
+          type: 'static_select',
+          action_id: 'company_type_select',
+          placeholder: { type: 'plain_text', text: 'Select company type...' },
+          options: companyTypeOptions,
+          initial_option: companyTypeOptions.find(opt => opt.value === (currentSettings?.companyType || 'general'))
+        },
+        hint: { type: 'plain_text', text: 'Your industry or business type' }
+      },
+      {
+        type: 'input',
+        block_id: 'specialty_setting',
+        label: { type: 'plain_text', text: 'Agent Specialty (Optional)' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'specialty_input',
+          placeholder: { type: 'plain_text', text: 'e.g., "reviewing factory floor incidents"' },
+          initial_value: currentSettings?.specialty || '',
+          multiline: false
+        },
+        hint: { type: 'plain_text', text: 'Specific area of expertise for the AI' },
+        optional: true
+      },
+      {
+        type: 'input',
+        block_id: 'response_length_setting',
+        label: { type: 'plain_text', text: 'Response Length' },
+        element: {
+          type: 'static_select',
+          action_id: 'response_length_select',
+          placeholder: { type: 'plain_text', text: 'Select response length...' },
+          options: responseLengthOptions,
+          initial_option: responseLengthOptions.find(opt => opt.value === (currentSettings?.responseLength || 'balanced'))
+        },
+        hint: { type: 'plain_text', text: 'How detailed responses should be' }
+      },
+      {
+        type: 'input',
+        block_id: 'language_style_setting',
+        label: { type: 'plain_text', text: 'Language Style' },
+        element: {
+          type: 'static_select',
+          action_id: 'language_style_select',
+          placeholder: { type: 'plain_text', text: 'Select language style...' },
+          options: languageStyleOptions,
+          initial_option: languageStyleOptions.find(opt => opt.value === (currentSettings?.languageStyle || 'conversational'))
+        },
+        hint: { type: 'plain_text', text: 'Formality and structure of responses' }
+      },
+      {
+        type: 'input',
+        block_id: 'custom_instructions_setting',
+        label: { type: 'plain_text', text: 'Custom Instructions (Optional)' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'custom_instructions_input',
+          placeholder: { type: 'plain_text', text: 'Any additional instructions for the AI...' },
+          initial_value: currentSettings?.customInstructions || '',
+          multiline: true
+        },
+        hint: { type: 'plain_text', text: 'Additional guidance for the AI behavior' },
+        optional: true
+      }
+    ]
   };
 }
 

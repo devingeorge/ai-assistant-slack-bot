@@ -1,7 +1,7 @@
 // src/services/prompt.js
 // Central place to build system prompts + guardrails.
 
-export function buildSystemPrompt({ surface, channelContextText, docContext, userMessage = '' }) {
+export function buildSystemPrompt({ surface, channelContextText, docContext, userMessage = '', agentSettings = null }) {
   // Check if user is asking about ticket creation in their message
   const isAskingAboutTickets = userMessage.toLowerCase().includes('ticket') || 
                                userMessage.toLowerCase().includes('jira');
@@ -10,10 +10,58 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
     ? 'You can help users create Jira tickets by suggesting they use "/ticket [description]" or "@mention me with create ticket [description]".'
     : '';
 
+  // Build personalized agent description based on user settings
+  let agentDescription = 'You are a helpful Slack assistant';
+  
+  if (agentSettings) {
+    const { tone, companyType, specialty, responseLength, languageStyle, customInstructions } = agentSettings;
+    
+    // Add tone
+    const toneDescriptions = {
+      professional: 'maintain a professional and formal tone',
+      casual: 'use a casual and relaxed tone',
+      friendly: 'be warm, friendly, and approachable',
+      technical: 'use precise, technical language',
+      supportive: 'be encouraging and supportive'
+    };
+    
+    // Add company context
+    const companyDescriptions = {
+      general: 'in a general business environment',
+      tech: 'in a technology company',
+      manufacturing: 'in a manufacturing environment',
+      healthcare: 'in a healthcare setting',
+      finance: 'in a financial services environment',
+      retail: 'in a retail business',
+      education: 'in an educational institution',
+      nonprofit: 'in a non-profit organization'
+    };
+    
+    // Add specialty
+    let specialtyText = '';
+    if (specialty && specialty.trim()) {
+      specialtyText = ` with expertise in ${specialty}`;
+    }
+    
+    // Add response length guidance
+    const lengthGuidance = {
+      brief: 'Keep responses concise and to the point',
+      balanced: 'Provide balanced responses with appropriate detail',
+      detailed: 'Give comprehensive and thorough responses'
+    };
+    
+    agentDescription = `You are a Slack assistant${specialtyText} ${companyDescriptions[companyType] || companyDescriptions.general}. ${toneDescriptions[tone] || toneDescriptions.professional}. ${lengthGuidance[responseLength] || lengthGuidance.balanced}.`;
+    
+    // Add custom instructions if provided
+    if (customInstructions && customInstructions.trim()) {
+      agentDescription += ` Additional instructions: ${customInstructions}`;
+    }
+  }
+  
   const base =
     surface === 'channel'
-      ? `You are a helpful Slack assistant. Keep replies concise and answer in the thread. ${ticketSuggestion}`
-      : `You are a Slack assistant in the Assistant panel. Be brief, conversational, and helpful. ${ticketSuggestion}`;
+      ? `${agentDescription} Keep replies concise and answer in the thread. ${ticketSuggestion}`
+      : `${agentDescription} Be brief, conversational, and helpful. ${ticketSuggestion}`;
 
   const guardrails = [
     'If you are unsure, say you do not know and offer next steps.',
