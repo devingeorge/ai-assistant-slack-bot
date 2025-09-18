@@ -115,7 +115,10 @@ app.event('*', async ({ event, client, context }) => {
   // Function to set suggested prompts using Slack's official API
   async function setSuggestedPromptsForAssistant(client, userId, teamId, channelId, threadTs) {
     try {
+      logger.info('Setting suggested prompts for assistant:', { userId, teamId, channelId, threadTs });
+      
       const suggestedPrompts = await getSuggestedPromptsForAPI(teamId, userId);
+      logger.info('Retrieved suggested prompts:', { userId, promptCount: suggestedPrompts.length, prompts: suggestedPrompts });
       
       if (suggestedPrompts.length === 0) {
         logger.info('No suggested prompts to set for user:', userId);
@@ -123,11 +126,14 @@ app.event('*', async ({ event, client, context }) => {
       }
       
       // Use Slack's official assistant.threads.setSuggestedPrompts API
+      logger.info('Calling assistant.threads.setSuggestedPrompts API...');
       const result = await client.assistant.threads.setSuggestedPrompts({
         channel_id: channelId,
         thread_ts: threadTs,
         prompts: suggestedPrompts
       });
+      
+      logger.info('API call result:', result);
       
       if (result.ok) {
         logger.info('Successfully set suggested prompts:', { userId, promptCount: suggestedPrompts.length });

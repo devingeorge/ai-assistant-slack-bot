@@ -5,18 +5,23 @@ import { logger } from '../lib/logger.js';
 /** Generate suggested prompts in the format expected by Slack's assistant.threads.setSuggestedPrompts API */
 export async function getSuggestedPromptsForAPI(teamId, userId) {
   try {
+    logger.info('Getting suggested prompts for API:', { teamId, userId });
     const prompts = await getSuggestedPrompts(teamId, userId);
+    logger.info('Retrieved prompts from storage:', { teamId, userId, promptCount: prompts.length, prompts });
     
     if (prompts.length === 0) {
       return [];
     }
     
     // Convert to the format expected by Slack's API
-    return prompts.map(prompt => ({
+    const apiPrompts = prompts.map(prompt => ({
       text: prompt.name,
       value: prompt.prompt,
       description: prompt.description || undefined
     }));
+    
+    logger.info('Converted prompts for API:', { teamId, userId, apiPrompts });
+    return apiPrompts;
   } catch (error) {
     logger.error('Error getting suggested prompts for API:', error);
     return [];
