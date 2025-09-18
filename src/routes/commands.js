@@ -5,6 +5,7 @@ import { store } from '../services/store.js';
 import { retrieveContext, initRagIfNeeded } from '../services/rag.js';
 import { buildSystemPrompt } from '../services/prompt.js';
 import { getAgentSettings } from '../services/agentSettings.js';
+import { formatResponseAsBlocks } from '../services/blockKitFormatter.js';
 import { slackCall } from '../lib/slackRetry.js';
 import { getLLMStream } from '../services/llm.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
@@ -26,13 +27,15 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
     buf += chunk;
     const now = Date.now();
     if (now - last > 700) {
-      await slackCall(client.chat.update, { channel, ts, text: buf.slice(0, 3900) });
+      const blockKitMessage = formatResponseAsBlocks(buf.slice(0, 3900));
+      await slackCall(client.chat.update, { channel, ts, ...blockKitMessage });
       last = now;
     }
   }
 
   if (ts) {
-    await slackCall(client.chat.update, { channel, ts, text: buf.slice(0, 3900) });
+    const blockKitMessage = formatResponseAsBlocks(buf.slice(0, 3900));
+    await slackCall(client.chat.update, { channel, ts, ...blockKitMessage });
   }
 }
 

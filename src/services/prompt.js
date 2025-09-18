@@ -60,7 +60,7 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
   
   const base =
     surface === 'channel'
-      ? `${agentDescription} Keep replies concise and answer in the thread. Use rich formatting with **bold text**, bullet points, emojis, and clear structure to make responses engaging and easy to read. ${ticketSuggestion}`
+      ? `${agentDescription} Keep replies concise and answer in the thread. Structure your responses with clear sections, headers, and bullet points for professional presentation. ${ticketSuggestion}`
       : `${agentDescription} Be brief, conversational, and helpful. ${ticketSuggestion}`;
 
   const guardrails = [
@@ -74,12 +74,12 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
 
   // Add formatting guidelines for channel responses
   const formattingGuidelines = surface === 'channel' ? [
-    'Use **bold** for important terms, headings, and key points.',
+    'Structure responses with clear headers ending in colons (e.g., "Overview:", "Recommendations:", "Next Steps:").',
     'Use bullet points (•) for lists and recommendations.',
-    'Add relevant emojis to make responses more engaging (🔍 for investigation, ⚠️ for warnings, ✅ for confirmations, etc.).',
-    'Structure responses with clear sections when appropriate.',
-    'Use line breaks to separate different topics or sections.',
-    'Make technical information accessible with clear explanations.'
+    'Add relevant emojis to headers for visual appeal (🔍 Overview, ⚠️ Warnings, ✅ Recommendations, etc.).',
+    'Separate different sections with line breaks.',
+    'Keep paragraphs concise and focused.',
+    'Use clear, professional language that works well in structured formats.'
   ] : [];
 
   const sections = [base, `Rules:\n- ${guardrails.join('\n- ')}`];

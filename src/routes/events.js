@@ -15,6 +15,7 @@ import { getAgentSettings } from '../services/agentSettings.js';
 import { slackCall } from '../lib/slackRetry.js';
 import { logger } from '../lib/logger.js';
 import { stopBlocks, homeView } from '../ui/views.js';
+import { formatResponseAsBlocks, formatSimpleTextAsBlocks } from '../services/blockKitFormatter.js';
 import { getLLMStream } from '../services/llm.js';
 import { assistantSearchContext, formatResultsAsBullets } from '../services/dataAccess.js';
 import { detectIntent } from '../services/intent.js';
@@ -65,10 +66,13 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
       buf += chunk;
 
       if (!ts) {
+        const messageContent = initialText == null ? buf.slice(0, 3900) : initialText;
+        const blockKitMessage = initialText == null ? formatResponseAsBlocks(messageContent) : { text: messageContent };
+        
         const posted = await slackCall(client.chat.postMessage, {
           channel,
           thread_ts,
-          text: initialText == null ? buf.slice(0, 3900) : initialText,
+          ...blockKitMessage,
           blocks: stopBlocks
         });
         ts = posted.ts;
@@ -77,10 +81,11 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
 
       const now = Date.now();
       if (now - last > 700) {
+        const blockKitMessage = formatResponseAsBlocks(buf.slice(0, 3900));
         await slackCall(client.chat.update, { 
           channel, 
           ts, 
-          text: buf.slice(0, 3900),
+          ...blockKitMessage,
           blocks: stopBlocks // Keep stop button during generation
         });
         last = now;
@@ -88,12 +93,12 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
     }
 
     if (ts) {
-      // Final update - remove stop button when complete
+      // Final update - format as Block Kit and remove stop button when complete
+      const blockKitMessage = formatResponseAsBlocks(buf.slice(0, 3900));
       await slackCall(client.chat.update, { 
         channel, 
         ts, 
-        text: buf.slice(0, 3900),
-        blocks: [] // Remove stop button when done
+        ...blockKitMessage // Use Block Kit format
       });
     }
   } catch (e) {
