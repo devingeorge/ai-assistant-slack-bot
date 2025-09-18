@@ -438,8 +438,6 @@ export function registerActions(app) {
 
   // Add/Edit Trigger modal submission
   app.view('add_trigger', async ({ ack, body, client, view, context }) => {
-    await ack();
-    
     try {
       const teamId = context.teamId || body.team?.id;
       const userId = body.user?.id;
@@ -470,10 +468,13 @@ export function registerActions(app) {
       
       // Validate input
       if (!triggerData.name || !triggerData.inputPhrases.length || !triggerData.response) {
-        await client.chat.postEphemeral({
-          channel: userId,
-          user: userId,
-          text: '❌ Please fill in all required fields (name, input phrases, and response)'
+        await ack({
+          response_action: 'errors',
+          errors: {
+            trigger_name: 'Please enter a trigger name',
+            trigger_input: 'Please enter at least one input phrase',
+            trigger_response: 'Please enter a response'
+          }
         });
         return;
       }
@@ -482,21 +483,30 @@ export function registerActions(app) {
       
       if (result.success) {
         const action = metadata.action === 'edit' ? 'updated' : 'created';
-        await client.chat.postEphemeral({
-          channel: userId,
-          user: userId,
-          text: `✅ Trigger "${triggerData.name}" ${action} successfully!`
-        });
         
         // If this was an edit operation, push a refreshed manage triggers view
         if (metadata.action === 'edit') {
           const updatedTriggers = await getPersonalTriggers(teamId, userId);
-          await client.views.push({
-            trigger_id: body.trigger_id,
+          await ack({
+            response_action: 'push',
             view: manageTriggerModal(updatedTriggers)
           });
+          
+          // Send success message after pushing the view
+          await client.chat.postEphemeral({
+            channel: userId,
+            user: userId,
+            text: `✅ Trigger "${triggerData.name}" ${action} successfully!`
+          });
         } else {
-          // For new triggers, refresh App Home to show updated trigger count
+          // For new triggers, close the modal and refresh App Home
+          await ack();
+          await client.chat.postEphemeral({
+            channel: userId,
+            user: userId,
+            text: `✅ Trigger "${triggerData.name}" ${action} successfully!`
+          });
+          
           const jiraConfig = await getJiraConfig(teamId);
           await client.views.publish({
             user_id: userId,
@@ -504,14 +514,21 @@ export function registerActions(app) {
           });
         }
       } else {
-        await client.chat.postEphemeral({
-          channel: userId,
-          user: userId,
-          text: `❌ Failed to save trigger: ${result.error}`
+        await ack({
+          response_action: 'errors',
+          errors: {
+            trigger_name: `Failed to save trigger: ${result.error}`
+          }
         });
       }
     } catch (error) {
       console.error('Add trigger submission error:', error);
+      await ack({
+        response_action: 'errors',
+        errors: {
+          trigger_name: 'An error occurred while saving the trigger'
+        }
+      });
     }
   });
 
