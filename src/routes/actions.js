@@ -281,6 +281,8 @@ export function registerActions(app) {
       const teamId = context.teamId || body.team?.id;
       const userId = body.user?.id;
       
+      console.log('Manage triggers - teamId:', teamId, 'userId:', userId);
+      
       const triggers = await getPersonalTriggers(teamId, userId);
       
       // Debug: log triggers retrieved
@@ -317,6 +319,8 @@ export function registerActions(app) {
     try {
       const teamId = context.teamId || body.team?.id;
       const userId = body.user?.id;
+      
+      console.log('Trigger action - teamId:', teamId, 'userId:', userId);
       const triggerId = action.action_id.split('_')[2];
       const selectedValue = action.selected_option?.value;
       
@@ -412,12 +416,14 @@ export function registerActions(app) {
   });
 
   // Add/Edit Trigger modal submission
-  app.view('add_trigger', async ({ ack, body, client, view }) => {
+  app.view('add_trigger', async ({ ack, body, client, view, context }) => {
     await ack();
     
     try {
-      const teamId = body.team?.id;
+      const teamId = context.teamId || body.team?.id;
       const userId = body.user?.id;
+      
+      console.log('Modal submission - teamId:', teamId, 'userId:', userId);
       
       const userInfo = await client.users.info({ user: userId });
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;

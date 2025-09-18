@@ -70,8 +70,8 @@ export async function getTriggers(teamId, userId) {
     ]);
 
     const allTriggers = [
-      ...personalTriggers.filter(t => t.enabled !== false),
-      ...workspaceTriggers.filter(t => t.enabled !== false)
+      ...(personalTriggers || []).filter(t => t.enabled !== false),
+      ...(workspaceTriggers || []).filter(t => t.enabled !== false)
     ];
 
     return allTriggers;
