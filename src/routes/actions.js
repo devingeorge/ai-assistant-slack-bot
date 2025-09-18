@@ -840,11 +840,11 @@ export function registerActions(app) {
   });
 
   // Add/Edit Suggested Prompt modal submission
-  app.view('add_suggested_prompt', async ({ ack, body, client, view }) => {
+  app.view('add_suggested_prompt', async ({ ack, body, client, view, context }) => {
     await ack();
     
     try {
-      const teamId = body.team?.id;
+      const teamId = context.teamId || body.team?.id;
       const userId = body.user?.id;
       
       const values = view.state.values;
