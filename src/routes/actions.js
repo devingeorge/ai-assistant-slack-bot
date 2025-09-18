@@ -283,6 +283,10 @@ export function registerActions(app) {
       
       const triggers = await getPersonalTriggers(teamId, userId);
       
+      // Debug: log triggers retrieved
+      console.log('Manage triggers - retrieved:', triggers.length, 'triggers');
+      console.log('Trigger details:', triggers.map(t => ({ id: t.id, name: t.name, enabled: t.enabled })));
+      
       await client.views.open({
         trigger_id: body.trigger_id,
         view: manageTriggerModal(triggers)
@@ -329,16 +333,29 @@ export function registerActions(app) {
           const triggers = await getPersonalTriggers(teamId, userId);
           const triggerToEdit = triggers.find(t => t.id === targetId);
           
+          console.log('Edit action - looking for trigger ID:', targetId);
+          console.log('Available triggers:', triggers.map(t => ({ id: t.id, name: t.name })));
+          console.log('Found trigger to edit:', triggerToEdit);
+          
           if (triggerToEdit) {
             await client.views.open({
               trigger_id: body.trigger_id,
               view: addTriggerModal(triggerToEdit)
             });
+          } else {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: '❌ Trigger not found for editing'
+            });
           }
           break;
           
         case 'delete':
+          console.log('Delete action - deleting trigger ID:', targetId);
           const deleteResult = await deleteTrigger(teamId, userId, targetId, isAdmin);
+          
+          console.log('Delete result:', deleteResult);
           
           if (deleteResult.success) {
             await client.chat.postEphemeral({
@@ -349,6 +366,8 @@ export function registerActions(app) {
             
             // Refresh the manage modal
             const updatedTriggers = await getPersonalTriggers(teamId, userId);
+            console.log('After delete - remaining triggers:', updatedTriggers.length);
+            
             await client.views.update({
               view_id: body.view?.id,
               view: manageTriggerModal(updatedTriggers)
@@ -417,6 +436,10 @@ export function registerActions(app) {
         response: values.trigger_response.response_text.value,
         scope: values.trigger_scope?.scope_select?.selected_option?.value || 'personal'
       };
+      
+      // Debug: log the metadata and trigger data
+      console.log('Modal submission metadata:', metadata);
+      console.log('Trigger data:', triggerData);
       
       // Validate input
       if (!triggerData.name || !triggerData.inputPhrases.length || !triggerData.response) {
