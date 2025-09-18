@@ -22,6 +22,7 @@ import { detectIntent } from '../services/intent.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 import { findMatchingTrigger } from '../services/triggers.js';
 import { getSuggestedPromptButtons, getSuggestedPromptsForAPI } from '../services/assistantPanel.js';
+import { Assistant } from '@slack/bolt';
 
 /** Resolve the channel the user is viewing in the Assistant panel (if present). */
 function resolveViewedChannelId(ctx) {
@@ -177,24 +178,43 @@ app.event('*', async ({ event, client, context }) => {
       logger.error('Error displaying welcome message with prompts:', error);
     }
   }
-  // Cache the assistant thread root so replies land in the Assistant pane
-  app.event('assistant_thread_started', async ({ event, client, context }) => {
-    const channelId = event?.assistant_thread?.channel_id;
-    const threadTs  = event?.assistant_thread?.thread_ts;
-    const userId = event?.user;
-    const teamId = context.teamId;
-    
-    if (channelId && threadTs) {
-      await setAssistantThread(channelId, threadTs);
-      logger.info('Cached assistant thread:', { channelId, threadTs });
-    }
-    
-    // Set suggested prompts using Slack's official API when assistant panel is opened
-    if (userId && teamId && channelId && threadTs) {
-      // Small delay to ensure the assistant panel is fully loaded
-      setTimeout(async () => {
-        await setSuggestedPromptsForAssistant(client, userId, teamId, channelId, threadTs);
-      }, 1000);
+  // Use the new Bolt Assistant class for proper assistant panel integration
+  const assistant = new Assistant(app, {
+    threadStarted: async ({ event, logger, say, setSuggestedPrompts, saveThreadContext }) => {
+      const { context } = event.assistant_thread;
+      const userId = event.user;
+      const teamId = event.team;
+      
+      logger.info('Assistant thread started with Bolt Assistant class:', { userId, teamId, context });
+      
+      try {
+        // Send welcome message
+        await say('👋 Hi! I\'m your AI Assistant. How can I help you today?');
+        
+        // Save thread context
+        await saveThreadContext();
+        
+        // Get user's suggested prompts and set them
+        const suggestedPrompts = await getSuggestedPromptsForAPI(teamId, userId);
+        logger.info('Setting suggested prompts via Bolt Assistant:', { userId, teamId, promptCount: suggestedPrompts.length, prompts: suggestedPrompts });
+        
+        if (suggestedPrompts.length > 0) {
+          // Convert to the format expected by setSuggestedPrompts
+          const prompts = suggestedPrompts.map(prompt => ({
+            title: prompt.text,
+            message: prompt.value
+          }));
+          
+          await setSuggestedPrompts(prompts);
+          logger.info('Successfully set suggested prompts via Bolt Assistant');
+        } else {
+          logger.info('No suggested prompts to set for user');
+        }
+        
+      } catch (error) {
+        logger.error('Error in assistant threadStarted:', error);
+        await say('Sorry, something went wrong! Please try again.');
+      }
     }
   });
 
