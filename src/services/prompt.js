@@ -75,11 +75,11 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
   // Add formatting guidelines for channel responses
   const formattingGuidelines = surface === 'channel' ? [
     'Structure responses with clear headers ending in colons (e.g., "Overview:", "Recommendations:", "Next Steps:").',
-    'Use bullet points (•) for lists and recommendations.',
+    'Use bullet points (•) for lists and recommendations, for blocks that contain bullets, the block type should be rich_text_list and the style should be bullet.',
     'Add relevant emojis to headers for visual appeal (🔍 Overview, ⚠️ Warnings, ✅ Recommendations, etc.).',
     'Separate different sections with line breaks.',
     'Keep paragraphs concise and focused.',
-    'Use single asterisks (*text*) for bold formatting, not double asterisks.',
+    'Use single asterisks (*text*) for bold formatting, never use double asterisks around any words of phrases.',
     'Use clear, professional language that works well in structured formats.'
   ] : [];
 
