@@ -352,15 +352,15 @@ export function registerActions(app) {
           console.log('Found trigger to edit:', triggerToEdit);
           
           if (triggerToEdit) {
-            console.log('Opening edit modal for trigger:', triggerToEdit.name);
+            console.log('Pushing edit view for trigger:', triggerToEdit.name);
             try {
-              await client.views.open({
+              await client.views.push({
                 trigger_id: body.trigger_id,
                 view: addTriggerModal(triggerToEdit)
               });
-              console.log('Edit modal opened successfully');
+              console.log('Edit view pushed successfully');
             } catch (error) {
-              console.error('Error opening edit modal:', error);
+              console.error('Error pushing edit view:', error);
               await client.chat.postEphemeral({
                 channel: userId,
                 user: userId,
