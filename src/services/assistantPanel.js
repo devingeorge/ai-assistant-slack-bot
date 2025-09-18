@@ -29,7 +29,7 @@ export async function getSuggestedPromptButtons(teamId, userId) {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '*💬 Suggested Prompts:*'
+          text: '*💬 How to get started:*'
         }
       },
       {

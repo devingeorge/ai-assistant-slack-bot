@@ -112,21 +112,36 @@ export function registerEvents(app) {
 app.event('*', async ({ event, client, context }) => {
 });
 
-  // Function to display suggested prompt buttons in assistant panel
-  async function displaySuggestedPromptButtons(client, userId, teamId) {
+  // Function to display welcome message with suggested prompt buttons in assistant panel
+  async function displayWelcomeMessageWithPrompts(client, userId, teamId) {
     try {
       const promptButtons = await getSuggestedPromptButtons(teamId, userId);
       
+      // Always send a welcome message, with or without suggested prompts
+      const welcomeBlocks = [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `👋 *Welcome! I'm your AI Assistant.*\n\nI can help you with questions, create tickets, summarize conversations, and much more. How can I assist you today?`
+          }
+        }
+      ];
+      
+      // Add suggested prompt buttons if they exist
       if (promptButtons) {
-        // Send the suggested prompt buttons as a message to the user's DM
-        await client.chat.postMessage({
-          channel: userId,
-          text: '💬 Here are your suggested prompts:',
-          blocks: promptButtons
-        });
+        welcomeBlocks.push({ type: 'divider' });
+        welcomeBlocks.push(...promptButtons);
       }
+      
+      // Send the welcome message with suggested prompt buttons
+      await client.chat.postMessage({
+        channel: userId,
+        text: 'Welcome! I\'m your AI Assistant. How can I help you today?',
+        blocks: welcomeBlocks
+      });
     } catch (error) {
-      logger.error('Error displaying suggested prompt buttons:', error);
+      logger.error('Error displaying welcome message with prompts:', error);
     }
   }
   // Cache the assistant thread root so replies land in the Assistant pane
@@ -141,11 +156,11 @@ app.event('*', async ({ event, client, context }) => {
       logger.info('Cached assistant thread:', { channelId, threadTs });
     }
     
-    // Display suggested prompts when assistant panel is opened
+    // Display welcome message with suggested prompts when assistant panel is opened
     if (userId && teamId) {
       // Small delay to ensure the assistant panel is fully loaded
       setTimeout(async () => {
-        await displaySuggestedPromptButtons(client, userId, teamId);
+        await displayWelcomeMessageWithPrompts(client, userId, teamId);
       }, 1000);
     }
   });
