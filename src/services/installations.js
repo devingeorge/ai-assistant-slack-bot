@@ -7,10 +7,15 @@ import { logger } from '../lib/logger.js';
  */
 export async function saveInstallation(installation) {
   try {
+    logger.info('Saving installation - full installation data:', JSON.stringify(installation, null, 2));
+    
     const teamId = installation.team?.id;
     const enterpriseId = installation.enterprise?.id;
     
+    logger.info('Extracted IDs:', { teamId, enterpriseId, hasTeam: !!installation.team, hasEnterprise: !!installation.enterprise });
+    
     if (!teamId) {
+      logger.error('Missing team ID in installation data:', installation);
       throw new Error('Missing team ID in installation');
     }
 
@@ -36,16 +41,26 @@ export async function getInstallation(installQuery) {
   try {
     const { teamId, enterpriseId, userId } = installQuery;
     
+    logger.info('Getting installation with query:', { teamId, enterpriseId, userId });
+    
     if (!teamId) {
+      logger.error('Missing team ID in install query:', installQuery);
       throw new Error('Missing team ID in install query');
     }
 
     // Look up the installation
     const key = `installation:${enterpriseId || 'none'}:${teamId}`;
+    logger.info('Looking up installation with key:', key);
+    
     const installationData = await redis.get(key);
     
     if (!installationData) {
-      logger.warn('Installation not found:', { teamId, enterpriseId, userId });
+      logger.warn('Installation not found:', { teamId, enterpriseId, userId, key });
+      
+      // Try to list all installation keys for debugging
+      const allKeys = await redis.keys('installation:*');
+      logger.info('All installation keys in database:', allKeys);
+      
       throw new Error('Installation not found');
     }
 
