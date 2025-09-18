@@ -60,6 +60,13 @@ export async function saveTrigger(teamId, userId, triggerData, isAdmin = false) 
       savedTriggers: savedTriggers?.map(t => ({ id: t.id, name: t.name, phrases: t.inputPhrases }))
     });
     
+    // Test store directly
+    const testKey = `test:${key}`;
+    await store.set(testKey, { test: 'data' });
+    const testData = await store.get(testKey);
+    console.log('🧪 Store Test:', { testKey, testData });
+    await store.del(testKey);
+    
     return { success: true, trigger };
   } catch (error) {
     logger.error('Error saving trigger:', error);

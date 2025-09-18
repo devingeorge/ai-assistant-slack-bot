@@ -296,7 +296,11 @@ export function registerActions(app) {
       const teamId = context.teamId || body.team?.id;
       const userId = body.user?.id;
       
+      console.log('🎛️ Manage Triggers Action:', { teamId, userId });
+      
       const triggers = await getPersonalTriggers(teamId, userId);
+      
+      console.log('🎛️ Triggers for modal:', triggers);
       
       await client.views.open({
         trigger_id: body.trigger_id,

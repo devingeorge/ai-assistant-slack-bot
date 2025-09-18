@@ -208,6 +208,8 @@ export function addTriggerModal(existingTrigger = null) {
 
 /** Manage Triggers Modal */
 export function manageTriggerModal(triggers = []) {
+  console.log('🎨 ManageTriggerModal called with:', triggers);
+  
   const blocks = [
     {
       type: 'section',

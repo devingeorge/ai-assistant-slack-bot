@@ -21,7 +21,9 @@ export const store = {
   // Generic Redis methods for triggers and other data
   async get(key) {
     try {
+      console.log('🔍 Store.get called:', key);
       const value = await redis.get(key);
+      console.log('🔍 Store.get result:', { key, value: value ? 'found' : 'null', length: value?.length });
       return value ? JSON.parse(value) : null;
     } catch (error) {
       console.error('Store.get error:', error);
@@ -31,12 +33,14 @@ export const store = {
   
   async set(key, value, ttlSeconds = null) {
     try {
+      console.log('💾 Store.set called:', { key, valueType: typeof value, ttlSeconds });
       const serialized = JSON.stringify(value);
       if (ttlSeconds) {
         await redis.setex(key, ttlSeconds, serialized);
       } else {
         await redis.set(key, serialized);
       }
+      console.log('💾 Store.set success:', key);
       return true;
     } catch (error) {
       console.error('Store.set error:', error);
