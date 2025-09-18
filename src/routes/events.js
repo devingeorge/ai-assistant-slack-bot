@@ -103,21 +103,14 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
 export function registerEvents(app) {
   // Add this at the top of registerEvents function
 app.event('*', async ({ event, client, context }) => {
-  console.log('=== ALL EVENTS ===');
-  console.log('Event type:', event.type);
-  console.log('Event data:', JSON.stringify(event, null, 2));
-  console.log('==================');
 });
   // Cache the assistant thread root so replies land in the Assistant pane
   app.event('assistant_thread_started', async ({ event }) => {
-    console.log('🎯 Assistant thread started event:', JSON.stringify(event, null, 2));
     const channelId = event?.assistant_thread?.channel_id;
     const threadTs  = event?.assistant_thread?.thread_ts;
     if (channelId && threadTs) {
       await setAssistantThread(channelId, threadTs);
       logger.info('Cached assistant thread:', { channelId, threadTs });
-    } else {
-      console.log('⚠️ Assistant thread event missing channelId or threadTs');
     }
   });
 
@@ -149,16 +142,6 @@ app.event('*', async ({ event, client, context }) => {
     const isTicketRequest = hasTicketKeywords && !isQuestion;
 
     // Debug: log ticket detection logic
-    if (hasTicketKeywords) {
-      console.log('🎫 Ticket keyword detection:', { 
-        prompt: prompt.slice(0, 100) + '...',
-        hasTicketKeywords,
-        isQuestion,
-        isTicketRequest,
-        matchedKeywords: ticketCreationKeywords.filter(keyword => lowerPrompt.includes(keyword)),
-        matchedQuestions: questionKeywords.filter(question => lowerPrompt.includes(question))
-      });
-    }
 
     if (isTicketRequest) {
       // Handle ticket creation
@@ -489,20 +472,7 @@ app.event('*', async ({ event, client, context }) => {
     const viewedChannelId = resolveViewedChannelId(assistantCtx);
 
     // DEBUG: Log what we're getting
-    console.log('=== Assistant Context Debug ===');
-    console.log('Assistant context:', JSON.stringify(assistantCtx, null, 2));
-    console.log('Resolved viewedChannelId:', viewedChannelId);
-    console.log('DM channel (event.channel):', event.channel);
-    console.log('Event assistant_thread:', JSON.stringify(event?.assistant_thread, null, 2));
-    console.log('================================');
 
-    // Additional debug for action_token
-    console.log('=== Action Token Debug ===');
-    console.log('Event keys:', Object.keys(event));
-    console.log('Event assistant_thread keys:', event?.assistant_thread ? Object.keys(event.assistant_thread) : 'undefined');
-    console.log('Action token present:', !!event?.assistant_thread?.action_token);
-    console.log('Data Access enabled:', config.features?.dataAccess);
-    console.log('================================');
 
         // Fallback: Handle both channel names and channel IDs
         if (!viewedChannelId) {
@@ -622,7 +592,6 @@ app.event('*', async ({ event, client, context }) => {
                 }
               }
             } catch (e) {
-              console.log('Channel search error:', e);
             }
           }
           
@@ -661,12 +630,6 @@ app.event('*', async ({ event, client, context }) => {
       const userId = event.user;
       const teamId = context.teamId || event.team_id || event.team || 'unknown';
       
-      console.log('🏠 App Home team ID sources:', {
-        'context.teamId': context.teamId,
-        'event.team_id': event.team_id, 
-        'event.team': event.team,
-        'final teamId': teamId
-      });
       
       // Check if user is admin
       const userInfo = await client.users.info({ user: userId });
@@ -676,15 +639,6 @@ app.event('*', async ({ event, client, context }) => {
       const { getJiraConfig } = await import('../services/jira.js');
       const jiraConfig = await getJiraConfig(teamId);
       
-      console.log('🏠 App Home opened DEBUG:', { 
-        userId, 
-        teamId, 
-        isAdmin, 
-        hasJiraConfig: !!jiraConfig,
-        jiraConfigFull: jiraConfig,
-        jiraBaseUrl: jiraConfig?.baseUrl,
-        jiraProject: jiraConfig?.defaultProject
-      });
       
       await client.views.publish({
         user_id: userId,

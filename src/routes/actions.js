@@ -57,13 +57,6 @@ export function registerActions(app) {
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
       const jiraConfig = await getJiraConfig(team);
       
-      console.log('🏠 Updating App Home after reset memory:', { 
-        user, 
-        team, 
-        isAdmin, 
-        hasJiraConfig: !!jiraConfig,
-        jiraBaseUrl: jiraConfig?.baseUrl 
-      });
       
       await client.views.publish({
         user_id: user,
@@ -105,13 +98,6 @@ export function registerActions(app) {
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
       const jiraConfig = await getJiraConfig(team);
       
-      console.log('🏠 Updating App Home after clear cache:', { 
-        user, 
-        team, 
-        isAdmin, 
-        hasJiraConfig: !!jiraConfig,
-        jiraBaseUrl: jiraConfig?.baseUrl 
-      });
       
       await client.views.publish({
         user_id: user,
@@ -265,7 +251,6 @@ export function registerActions(app) {
           blocks: []
         });
         
-        console.log(`🛑 Generation stopped by user ${user} in ${channel}`);
       }
     } catch (error) {
       console.error('Stop button error:', error);
@@ -296,11 +281,7 @@ export function registerActions(app) {
       const teamId = context.teamId || body.team?.id;
       const userId = body.user?.id;
       
-      console.log('🎛️ Manage Triggers Action:', { teamId, userId });
-      
       const triggers = await getPersonalTriggers(teamId, userId);
-      
-      console.log('🎛️ Triggers for modal:', triggers);
       
       await client.views.open({
         trigger_id: body.trigger_id,

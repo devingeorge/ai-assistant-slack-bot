@@ -19,7 +19,6 @@ try {
   });
   
   redis.on('connect', () => {
-    console.log('✅ Redis connected successfully');
   });
 } catch (err) {
   console.warn('Redis initialization failed:', err.message);

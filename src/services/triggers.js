@@ -38,7 +38,6 @@ export async function saveTrigger(teamId, userId, triggerData, isAdmin = false) 
     };
 
     const key = triggerKey(teamId, userId, scope);
-    console.log('🔑 Trigger Key Debug:', { teamId, userId, scope, key });
     const triggers = await store.get(key) || [];
     
     // Update existing or add new
@@ -51,21 +50,6 @@ export async function saveTrigger(teamId, userId, triggerData, isAdmin = false) 
 
     await store.set(key, triggers);
     logger.info('Trigger saved:', { teamId, userId, triggerId: trigger.id, scope });
-    
-    // Debug: verify what was saved
-    const savedTriggers = await store.get(key);
-    console.log('💾 Trigger Save Debug:', {
-      key,
-      savedCount: savedTriggers?.length || 0,
-      savedTriggers: savedTriggers?.map(t => ({ id: t.id, name: t.name, phrases: t.inputPhrases }))
-    });
-    
-    // Test store directly
-    const testKey = `test:${key}`;
-    await store.set(testKey, { test: 'data' });
-    const testData = await store.get(testKey);
-    console.log('🧪 Store Test:', { testKey, testData });
-    await store.del(testKey);
     
     return { success: true, trigger };
   } catch (error) {
@@ -85,22 +69,10 @@ export async function getTriggers(teamId, userId) {
       store.get(workspaceKey) || []
     ]);
 
-    // Debug logging
-    console.log('📋 GetTriggers Debug:', {
-      teamId,
-      userId,
-      personalKey,
-      workspaceKey,
-      personalTriggers: personalTriggers?.map(t => ({ id: t.id, name: t.name, enabled: t.enabled })),
-      workspaceTriggers: workspaceTriggers?.map(t => ({ id: t.id, name: t.name, enabled: t.enabled }))
-    });
-
     const allTriggers = [
       ...personalTriggers.filter(t => t.enabled !== false),
       ...workspaceTriggers.filter(t => t.enabled !== false)
     ];
-
-    console.log('✅ Final triggers:', allTriggers.map(t => ({ id: t.id, name: t.name, enabled: t.enabled })));
 
     return allTriggers;
   } catch (error) {
@@ -114,15 +86,6 @@ export async function getPersonalTriggers(teamId, userId) {
   try {
     const key = triggerKey(teamId, userId, 'personal');
     const triggers = await store.get(key) || [];
-    
-    // Debug logging
-    console.log('👤 GetPersonalTriggers Debug:', {
-      teamId,
-      userId,
-      key,
-      triggersFound: triggers.length,
-      triggers: triggers.map(t => ({ id: t.id, name: t.name, enabled: t.enabled, scope: t.scope }))
-    });
     
     return triggers;
   } catch (error) {
@@ -177,16 +140,6 @@ export async function findMatchingTrigger(teamId, userId, inputText) {
   try {
     const triggers = await getTriggers(teamId, userId);
     const normalizedInput = inputText.toLowerCase().trim();
-    
-    // Debug logging
-    console.log('🔍 Trigger Debug:', {
-      teamId,
-      userId,
-      inputText: inputText.slice(0, 50),
-      normalizedInput,
-      triggersFound: triggers.length,
-      triggers: triggers.map(t => ({ id: t.id, name: t.name, phrases: t.inputPhrases }))
-    });
     
     for (const trigger of triggers) {
       for (const phrase of trigger.inputPhrases) {

@@ -1,51 +1,31 @@
 // src/index.js
-console.log('🟢 APP STARTING - index.js loaded');
-
 import pkg from '@slack/bolt';
 const { App, LogLevel, ExpressReceiver } = pkg;
 
-console.log('🟢 Slack Bolt imported successfully');
-
 import { config } from './config.js';
-console.log('🟢 Config imported');
 
 import { registerEvents } from './routes/events.js';
 import { registerCommands } from './routes/commands.js'; 
 import { registerActions } from './routes/actions.js';
-console.log('🟢 Routes imported');
 
 import { clearAllState, redis } from './services/memory.js';
 import { getInstallation, saveInstallation, deleteInstallation } from './services/installations.js';
-console.log('🟢 Services imported');
 
 // Check if we have the required environment variables
-console.log('🔍 Environment Variables Check:');
-console.log('   REDIS_URL:', process.env.REDIS_URL ? 'SET' : 'MISSING');
-console.log('   SLACK_CLIENT_ID:', config.slack.clientId ? 'SET' : 'MISSING');
-console.log('   SLACK_CLIENT_SECRET:', config.slack.clientSecret ? 'SET' : 'MISSING');
-console.log('   SLACK_SIGNING_SECRET:', config.slack.signingSecret ? 'SET' : 'MISSING');
-console.log('   SLACK_STATE_SECRET:', process.env.SLACK_STATE_SECRET ? 'SET' : 'MISSING (using fallback)');
-console.log('   GROK_API_KEY:', process.env.GROK_API_KEY ? 'SET' : 'MISSING');
-console.log('');
+if (!config.slack.clientId || !config.slack.clientSecret || !config.slack.signingSecret) {
+  console.error('❌ Missing required Slack environment variables');
+  console.error('   Please set SLACK_CLIENT_ID, SLACK_CLIENT_SECRET, and SLACK_SIGNING_SECRET');
+  process.exit(1);
+}
 
 if (!config.slack.signingSecret) {
   console.error('❌ Missing SLACK_SIGNING_SECRET environment variable');
-  console.log('📝 Please set the following environment variables in Railway:');
-  console.log('   SLACK_CLIENT_ID=your-client-id');
-  console.log('   SLACK_CLIENT_SECRET=your-client-secret');
-  console.log('   SLACK_SIGNING_SECRET=your-signing-secret');
-  console.log('   SLACK_STATE_SECRET=your-random-secret');
-  console.log('   GROK_API_KEY=your-grok-api-key');
-  console.log('   REDIS_URL=${{Redis.REDIS_URL}}');
-  console.log('');
-  console.log('🚂 The app will continue running to allow Railway to deploy');
-  console.log('   but Slack functionality will not work until credentials are added.');
+  process.exit(1);
 }
 
 if (!process.env.REDIS_URL) {
   console.error('❌ Missing REDIS_URL environment variable');
-  console.log('📝 Using fallback Redis URL: redis://localhost:6379');
-  console.log('   This will fail in Railway. Please set REDIS_URL=${{Redis.REDIS_URL}}');
+  process.exit(1);
 }
 
 // Use ExpressReceiver for HTTP mode and OAuth
@@ -158,12 +138,11 @@ receiver.router.use((error, req, res, next) => {
   }
 });
 
-// Railway Health Check (CRITICAL) - BEFORE app.start()
+// Health Check endpoints
 receiver.router.get('/health', (req, res) => {
   res.status(200).send('ok');
 });
 
-// Alternative health check paths
 receiver.router.get('/healthz', (req, res) => {
   res.status(200).send('ok');
 });
@@ -187,29 +166,14 @@ receiver.router.get('/', (req, res) => {
 
 (async () => {
   try {
-    const port = process.env.PORT || 3000; // Use Railway's port (3000)
+    const port = process.env.PORT || 3000;
     
-    // Debug Railway port configuration
-    console.log('🚂 Railway Port Debug:');
-    console.log(`   PORT environment variable: ${process.env.PORT}`);
-    console.log(`   Using port: ${port}`);
-    console.log(`   Host: 0.0.0.0 (all IPv4 interfaces)`);
-    
-    console.log('🚀 Starting Slack Bot server...');
-    
-    // For Railway, we need to explicitly start the HTTP server
-    // Try explicit IPv4 binding to avoid IPv6 conflicts
     await app.start({
       port: port,
-      host: '0.0.0.0'  // Back to IPv4 - Slack Bolt might handle IPv6 differently
+      host: '0.0.0.0'
     });
     
-    console.log('✅ Server startup completed successfully!');
-    
-    console.log(`⚡️ Slack + Grok bot running on 0.0.0.0:${port} (HTTP Mode)`);
-    console.log(`🌐 Server should be accessible on all interfaces`);
-    console.log(`🔗 URLs should work at: https://ai-assistant-slack-bot-production.up.railway.app`);
-    console.log(`🎯 Railway should route traffic to this port: ${port}`);
+    console.log(`⚡️ Slack + Grok bot running on port ${port}`);
 
     // Add install success page
     receiver.router.get('/slack/install/success', (req, res) => {
