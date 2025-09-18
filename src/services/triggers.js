@@ -38,6 +38,7 @@ export async function saveTrigger(teamId, userId, triggerData, isAdmin = false) 
     };
 
     const key = triggerKey(teamId, userId, scope);
+    console.log('🔑 Trigger Key Debug:', { teamId, userId, scope, key });
     const triggers = await store.get(key) || [];
     
     // Update existing or add new
@@ -77,10 +78,22 @@ export async function getTriggers(teamId, userId) {
       store.get(workspaceKey) || []
     ]);
 
+    // Debug logging
+    console.log('📋 GetTriggers Debug:', {
+      teamId,
+      userId,
+      personalKey,
+      workspaceKey,
+      personalTriggers: personalTriggers?.map(t => ({ id: t.id, name: t.name, enabled: t.enabled })),
+      workspaceTriggers: workspaceTriggers?.map(t => ({ id: t.id, name: t.name, enabled: t.enabled }))
+    });
+
     const allTriggers = [
       ...personalTriggers.filter(t => t.enabled !== false),
       ...workspaceTriggers.filter(t => t.enabled !== false)
     ];
+
+    console.log('✅ Final triggers:', allTriggers.map(t => ({ id: t.id, name: t.name, enabled: t.enabled })));
 
     return allTriggers;
   } catch (error) {
@@ -93,7 +106,18 @@ export async function getTriggers(teamId, userId) {
 export async function getPersonalTriggers(teamId, userId) {
   try {
     const key = triggerKey(teamId, userId, 'personal');
-    return await store.get(key) || [];
+    const triggers = await store.get(key) || [];
+    
+    // Debug logging
+    console.log('👤 GetPersonalTriggers Debug:', {
+      teamId,
+      userId,
+      key,
+      triggersFound: triggers.length,
+      triggers: triggers.map(t => ({ id: t.id, name: t.name, enabled: t.enabled, scope: t.scope }))
+    });
+    
+    return triggers;
   } catch (error) {
     logger.error('Error getting personal triggers:', error);
     return [];
