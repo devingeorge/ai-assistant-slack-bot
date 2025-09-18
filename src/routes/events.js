@@ -215,6 +215,62 @@ app.event('*', async ({ event, client, context }) => {
         logger.error('Error in assistant threadStarted:', error);
         await say('Sorry, something went wrong! Please try again.');
       }
+    },
+    
+    userMessage: async ({ event, logger, say, client, getThreadContext }) => {
+      const userId = event.user;
+      const teamId = event.team;
+      const message = event.message;
+      const channel = event.channel;
+      const thread_ts = event.thread_ts;
+      
+      logger.info('Processing user message in assistant:', { userId, teamId, messageText: message.text });
+      
+      try {
+        // Get thread context
+        const threadContext = await getThreadContext();
+        
+        // Use existing message processing logic from the main message handler
+        const userText = (message.text || '').slice(0, 4000);
+        const key = convoKey({ team: teamId, channel, thread: thread_ts || null, user: userId });
+        
+        // Add user turn to conversation history
+        await store.addUserTurn(key, userText);
+        
+        // Get user's agent settings
+        const { getAgentSettings } = await import('../services/agentSettings.js');
+        const agentSettings = await getAgentSettings(teamId, userId);
+        
+        // Build system prompt
+        const { buildSystemPrompt } = await import('../services/prompt.js');
+        const system = buildSystemPrompt({
+          surface: 'assistant',
+          channelContextText: null,
+          docContext: '',
+          userMessage: userText,
+          agentSettings
+        });
+        
+        // Get conversation history
+        const history = await store.history(key, 20);
+        
+        // Get LLM stream and process
+        const llmStream = getLLMStream();
+        const iter = llmStream({ messages: history, system });
+        
+        // Stream response to user
+        let responseText = '';
+        for await (const chunk of iter) {
+          responseText += chunk;
+        }
+        
+        // Send final response
+        await say(responseText);
+        
+      } catch (error) {
+        logger.error('Error processing user message in assistant:', error);
+        await say('Sorry, something went wrong! Please try again.');
+      }
     }
   });
 
