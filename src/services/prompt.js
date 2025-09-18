@@ -79,6 +79,7 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
     'Add relevant emojis to headers for visual appeal (🔍 Overview, ⚠️ Warnings, ✅ Recommendations, etc.).',
     'Separate different sections with line breaks.',
     'Keep paragraphs concise and focused.',
+    'Use single asterisks (*text*) for bold formatting, not double asterisks.',
     'Use clear, professional language that works well in structured formats.'
   ] : [];
 

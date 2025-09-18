@@ -95,7 +95,7 @@ function isHeader(line) {
   // Headers typically end with colon or are short and descriptive
   return line.endsWith(':') || 
          (line.length < 50 && /^[A-Z][a-z\s]+$/.test(line)) ||
-         line.match(/^\*\*.*\*\*:$/) ||
+         line.match(/^\*.*\*:$/) ||
          line.match(/^#{1,6}\s/);
 }
 
@@ -118,12 +118,12 @@ function isBulletPoint(line) {
 function createBlockFromSection(section) {
   switch (section.type) {
     case 'header':
+      // Use bold text instead of header blocks for subtler appearance
       return {
-        type: 'header',
+        type: 'section',
         text: {
-          type: 'plain_text',
-          text: section.content,
-          emoji: true
+          type: 'mrkdwn',
+          text: `*${section.content}*`
         }
       };
       
