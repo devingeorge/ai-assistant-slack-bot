@@ -562,7 +562,7 @@ export function registerActions(app) {
     }
   });
 
-  // Reset Agent Settings action
+  // Reset Agent Settings action (from App Home)
   app.action('reset_agent_settings', async ({ ack, body, client, context }) => {
     await ack();
     
@@ -592,6 +592,52 @@ export function registerActions(app) {
       });
     } catch (error) {
       console.error('Reset agent settings error:', error);
+    }
+  });
+
+  // Reset Agent Settings action (from Modal)
+  app.action('reset_agent_settings_from_modal', async ({ ack, body, client, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      // Delete the agent settings (this will make getAgentSettings return defaults)
+      const key = `agent_settings:${teamId}:${userId}`;
+      await store.del(key);
+      
+      // Close the modal and show success message
+      await client.views.update({
+        view_id: body.view.id,
+        view: {
+          type: 'modal',
+          title: { type: 'plain_text', text: 'Settings Reset' },
+          close: { type: 'plain_text', text: 'Close' },
+          blocks: [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '✅ *Agent settings reset to defaults!*\n\nYour AI assistant will now use standard behavior. You can close this modal and configure new settings anytime.'
+              }
+            }
+          ]
+        }
+      });
+      
+      // Refresh App Home to show reset state
+      const userInfo = await client.users.info({ user: userId });
+      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+      const jiraConfig = await getJiraConfig(teamId);
+      const agentSettings = await getAgentSettings(teamId, userId); // This will return defaults now
+      
+      await client.views.publish({
+        user_id: userId,
+        view: homeView(isAdmin, jiraConfig, agentSettings)
+      });
+    } catch (error) {
+      console.error('Reset agent settings from modal error:', error);
     }
   });
 

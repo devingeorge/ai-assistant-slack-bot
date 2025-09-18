@@ -123,7 +123,7 @@ export function homeView(isAdmin = false, jiraConfig = null, agentSettings = nul
       }
     });
     
-    // Add Reset button
+    // Add Reset button next to Configure Agent
     blocks.push({
       type: 'actions',
       elements: [
@@ -416,6 +416,23 @@ export function agentSettingsModal(currentSettings = null) {
           type: 'mrkdwn',
           text: '⚙️ *Customize Your AI Assistant*\nPersonalize how the AI responds to match your needs and preferences.'
         }
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            action_id: 'reset_agent_settings_from_modal',
+            text: { type: 'plain_text', text: '🔄 Reset to Defaults' },
+            style: 'danger',
+            confirm: {
+              title: { type: 'plain_text', text: 'Reset Agent Settings?' },
+              text: { type: 'plain_text', text: 'This will clear all your custom agent settings and restore default behavior. This action cannot be undone.' },
+              confirm: { type: 'plain_text', text: 'Yes, Reset' },
+              deny: { type: 'plain_text', text: 'Cancel' }
+            }
+          }
+        ]
       },
       {
         type: 'input',
