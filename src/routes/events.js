@@ -21,6 +21,7 @@ import { assistantSearchContext, formatResultsAsBullets } from '../services/data
 import { detectIntent } from '../services/intent.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 import { findMatchingTrigger } from '../services/triggers.js';
+import { getSuggestedPromptButtons } from '../services/assistantPanel.js';
 
 /** Resolve the channel the user is viewing in the Assistant panel (if present). */
 function resolveViewedChannelId(ctx) {
@@ -110,13 +111,42 @@ export function registerEvents(app) {
   // Add this at the top of registerEvents function
 app.event('*', async ({ event, client, context }) => {
 });
+
+  // Function to display suggested prompt buttons in assistant panel
+  async function displaySuggestedPromptButtons(client, userId, teamId) {
+    try {
+      const promptButtons = await getSuggestedPromptButtons(teamId, userId);
+      
+      if (promptButtons) {
+        // Send the suggested prompt buttons as a message to the user's DM
+        await client.chat.postMessage({
+          channel: userId,
+          text: '💬 Here are your suggested prompts:',
+          blocks: promptButtons
+        });
+      }
+    } catch (error) {
+      logger.error('Error displaying suggested prompt buttons:', error);
+    }
+  }
   // Cache the assistant thread root so replies land in the Assistant pane
-  app.event('assistant_thread_started', async ({ event }) => {
+  app.event('assistant_thread_started', async ({ event, client, context }) => {
     const channelId = event?.assistant_thread?.channel_id;
     const threadTs  = event?.assistant_thread?.thread_ts;
+    const userId = event?.user;
+    const teamId = context.teamId;
+    
     if (channelId && threadTs) {
       await setAssistantThread(channelId, threadTs);
       logger.info('Cached assistant thread:', { channelId, threadTs });
+    }
+    
+    // Display suggested prompts when assistant panel is opened
+    if (userId && teamId) {
+      // Small delay to ensure the assistant panel is fully loaded
+      setTimeout(async () => {
+        await displaySuggestedPromptButtons(client, userId, teamId);
+      }, 1000);
     }
   });
 

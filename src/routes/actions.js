@@ -9,7 +9,9 @@ import {
   addTriggerModal, 
   manageTriggerModal, 
   importTemplatesModal,
-  agentSettingsModal 
+  agentSettingsModal,
+  addSuggestedPromptModal,
+  manageSuggestedPromptsModal
 } from '../ui/views.js';
 import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/jira.js';
 import { 
@@ -25,6 +27,14 @@ import {
   getAgentSettings, 
   saveAgentSettings 
 } from '../services/agentSettings.js';
+import { 
+  saveSuggestedPrompt, 
+  getSuggestedPrompts,
+  getAllSuggestedPrompts, 
+  deleteSuggestedPrompt, 
+  toggleSuggestedPrompt,
+  getSuggestedPromptById
+} from '../services/suggestedPrompts.js';
 import { store } from '../services/store.js';
 
 export function registerActions(app) {
@@ -710,6 +720,228 @@ export function registerActions(app) {
       }
     } catch (error) {
       console.error('Import templates submission error:', error);
+    }
+  });
+
+  // ===== SUGGESTED PROMPTS ACTIONS =====
+
+  // Add Suggested Prompt button
+  app.action('add_suggested_prompt', async ({ ack, body, client }) => {
+    await ack();
+    
+    try {
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: addSuggestedPromptModal()
+      });
+    } catch (error) {
+      console.error('Add suggested prompt modal error:', error);
+    }
+  });
+
+  // Manage Suggested Prompts button
+  app.action('manage_suggested_prompts', async ({ ack, body, client, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const prompts = await getAllSuggestedPrompts(teamId, userId);
+      
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: manageSuggestedPromptsModal(prompts)
+      });
+    } catch (error) {
+      console.error('Manage suggested prompts modal error:', error);
+    }
+  });
+
+  // Suggested Prompt overflow menu actions
+  app.action(/^suggested_prompt_actions_(.+)$/, async ({ ack, body, client, context, action }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const selectedValue = action.selected_option?.value;
+      if (!selectedValue) return;
+      
+      // Parse selected value: format is "actionType_promptId"
+      const firstUnderscore = selectedValue.indexOf('_');
+      const actionType = selectedValue.substring(0, firstUnderscore);
+      const targetId = selectedValue.substring(firstUnderscore + 1);
+      
+      switch (actionType) {
+        case 'edit':
+          const promptToEdit = await getSuggestedPromptById(teamId, userId, targetId);
+          if (promptToEdit) {
+            await client.views.open({
+              trigger_id: body.trigger_id,
+              view: addSuggestedPromptModal(promptToEdit)
+            });
+          }
+          break;
+          
+        case 'delete':
+          const deleteResult = await deleteSuggestedPrompt(teamId, userId, targetId);
+          if (deleteResult.success) {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: '✅ Suggested prompt deleted successfully!'
+            });
+            
+            // Refresh the modal
+            const prompts = await getAllSuggestedPrompts(teamId, userId);
+            await client.views.update({
+              view_id: body.view?.id,
+              view: manageSuggestedPromptsModal(prompts)
+            });
+          } else {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: `❌ Failed to delete prompt: ${deleteResult.error}`
+            });
+          }
+          break;
+          
+        case 'toggle':
+          const toggleResult = await toggleSuggestedPrompt(teamId, userId, targetId);
+          if (toggleResult.success) {
+            const status = toggleResult.enabled ? 'enabled' : 'disabled';
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: `✅ Suggested prompt ${status} successfully!`
+            });
+            
+            // Refresh the modal
+            const prompts = await getAllSuggestedPrompts(teamId, userId);
+            await client.views.update({
+              view_id: body.view?.id,
+              view: manageSuggestedPromptsModal(prompts)
+            });
+          } else {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: `❌ Failed to toggle prompt: ${toggleResult.error}`
+            });
+          }
+          break;
+      }
+    } catch (error) {
+      console.error('Suggested prompt action error:', error);
+    }
+  });
+
+  // Add/Edit Suggested Prompt modal submission
+  app.view('add_suggested_prompt', async ({ ack, body, client, view }) => {
+    await ack();
+    
+    try {
+      const teamId = body.team?.id;
+      const userId = body.user?.id;
+      
+      const values = view.state.values;
+      const metadata = JSON.parse(view.private_metadata || '{}');
+      
+      const name = values.prompt_name?.name_input?.value?.trim();
+      const prompt = values.prompt_text?.prompt_input?.value?.trim();
+      const description = values.prompt_description?.description_input?.value?.trim();
+      
+      if (!name || !prompt) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '❌ Please fill in both the prompt name and prompt message'
+        });
+        return;
+      }
+      
+      const promptData = {
+        name,
+        prompt,
+        description,
+        enabled: true
+      };
+      
+      if (metadata.action === 'edit' && metadata.id) {
+        promptData.id = metadata.id;
+      }
+      
+      const result = await saveSuggestedPrompt(teamId, userId, promptData);
+      
+      if (result.success) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `✅ Suggested prompt "${name}" saved successfully!`
+        });
+        
+        // Refresh App Home
+        const userInfo = await client.users.info({ user: userId });
+        const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+        const jiraConfig = await getJiraConfig(teamId);
+        const agentSettings = await getAgentSettings(teamId, userId);
+        await client.views.publish({
+          user_id: userId,
+          view: homeView(isAdmin, jiraConfig, agentSettings)
+        });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to save prompt: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Suggested prompt submission error:', error);
+    }
+  });
+
+  // Suggested prompt button click handler
+  app.action(/^suggested_prompt_(.+)$/, async ({ ack, body, client, context, action }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      // Extract prompt ID from action_id (format: suggested_prompt_${promptId})
+      const promptId = action.action_id.replace('suggested_prompt_', '');
+      
+      // Get the prompt data
+      const prompt = await getSuggestedPromptById(teamId, userId, promptId);
+      
+      if (!prompt || !prompt.enabled) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '❌ This suggested prompt is not available or has been disabled.'
+        });
+        return;
+      }
+      
+      // Send the prompt as a message to the assistant
+      // This will trigger the message event handler in events.js
+      await client.chat.postMessage({
+        channel: userId, // Send to the user's DM
+        text: prompt.prompt,
+        thread_ts: undefined // Send as a new message, not in a thread
+      });
+      
+    } catch (error) {
+      console.error('Suggested prompt button click error:', error);
+      await client.chat.postEphemeral({
+        channel: body.user?.id,
+        user: body.user?.id,
+        text: '❌ Failed to send suggested prompt. Please try again.'
+      });
     }
   });
 }

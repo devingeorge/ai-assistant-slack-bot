@@ -138,6 +138,38 @@ export function homeView(isAdmin = false, jiraConfig = null, agentSettings = nul
     });
   }
 
+  // Add Suggested Prompts section
+  blocks.push({ type: 'divider' });
+  blocks.push({
+    type: 'header',
+    text: { type: 'plain_text', text: '💬 Suggested Prompts', emoji: true }
+  });
+  blocks.push({
+    type: 'section',
+    text: {
+      type: 'mrkdwn',
+      text: '*Custom Assistant Prompts*\nDefine 2-3 quick prompts that appear as buttons in the Assistant panel. Perfect for frequently asked questions or common requests.'
+    }
+  });
+  
+  // Suggested prompts action buttons
+  blocks.push({
+    type: 'actions',
+    elements: [
+      {
+        type: 'button',
+        action_id: 'add_suggested_prompt',
+        text: { type: 'plain_text', text: '➕ Add Prompt' },
+        style: 'primary'
+      },
+      {
+        type: 'button',
+        action_id: 'manage_suggested_prompts',
+        text: { type: 'plain_text', text: '📝 Manage Prompts' }
+      }
+    ]
+  });
+
   // Add Dynamic Action Triggers section
   blocks.push({ type: 'divider' });
   blocks.push({
@@ -552,6 +584,141 @@ export function importTemplatesModal() {
         }
       }
     ]
+  };
+}
+
+/** Add/Edit Suggested Prompt Modal */
+export function addSuggestedPromptModal(existingPrompt = null) {
+  const title = existingPrompt ? 'Edit Suggested Prompt' : 'Add Suggested Prompt';
+  
+  return {
+    type: 'modal',
+    callback_id: 'add_suggested_prompt',
+    title: { type: 'plain_text', text: title },
+    submit: { type: 'plain_text', text: 'Save' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '💬 Create a custom prompt button that appears in the Assistant panel.\n*The prompt text will be sent as a message when the button is clicked.*'
+        }
+      },
+      {
+        type: 'input',
+        block_id: 'prompt_name',
+        label: { type: 'plain_text', text: 'Prompt Name (Button Text)' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'name_input',
+          placeholder: { type: 'plain_text', text: 'e.g., "Summarize this channel"' },
+          initial_value: existingPrompt?.name || '',
+          max_length: 75
+        },
+        hint: { type: 'plain_text', text: 'Short name that appears on the button (max 75 characters)' }
+      },
+      {
+        type: 'input',
+        block_id: 'prompt_text',
+        label: { type: 'plain_text', text: 'Prompt Message' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'prompt_input',
+          multiline: true,
+          placeholder: { type: 'plain_text', text: 'e.g., "Please summarize the key points from this channel conversation"' },
+          initial_value: existingPrompt?.prompt || '',
+          max_length: 2000
+        },
+        hint: { type: 'plain_text', text: 'The message that will be sent to the assistant when clicked (max 2000 characters)' }
+      },
+      {
+        type: 'input',
+        block_id: 'prompt_description',
+        label: { type: 'plain_text', text: 'Description (Optional)' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'description_input',
+          placeholder: { type: 'plain_text', text: 'Brief description of what this prompt does' },
+          initial_value: existingPrompt?.description || '',
+          max_length: 100
+        },
+        hint: { type: 'plain_text', text: 'Optional description to help you remember what this prompt is for' },
+        optional: true
+      }
+    ],
+    private_metadata: existingPrompt ? JSON.stringify({ id: existingPrompt.id, action: 'edit' }) : JSON.stringify({ action: 'create' })
+  };
+}
+
+/** Manage Suggested Prompts Modal */
+export function manageSuggestedPromptsModal(prompts = []) {
+  const blocks = [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '💬 *Manage Your Suggested Prompts*\nView, edit, or delete your custom Assistant panel prompts.\n\n*Note: You can have up to 3 suggested prompts.*'
+      }
+    }
+  ];
+
+  if (prompts.length === 0) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '_No suggested prompts created yet. Click "Add Prompt" to get started!_'
+      }
+    });
+  } else {
+    blocks.push({ type: 'divider' });
+    
+    prompts.forEach((prompt, index) => {
+      const isDisabled = prompt.enabled === false;
+      const statusIcon = isDisabled ? '🔴' : '🟢';
+      const statusText = isDisabled ? ' (DISABLED)' : '';
+      
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `${statusIcon} *${prompt.name}*${statusText}\n` +
+                `_Prompt:_ ${prompt.prompt.slice(0, 80)}${prompt.prompt.length > 80 ? '...' : ''}\n` +
+                `_Created:_ ${new Date(prompt.createdAt).toLocaleDateString()}`
+        },
+        accessory: {
+          type: 'overflow',
+          action_id: `suggested_prompt_actions_${prompt.id}`,
+          options: [
+            {
+              text: { type: 'plain_text', text: '✏️ Edit' },
+              value: `edit_${prompt.id}`
+            },
+            {
+              text: { type: 'plain_text', text: '🗑️ Delete' },
+              value: `delete_${prompt.id}`
+            },
+            {
+              text: { type: 'plain_text', text: isDisabled ? '✅ Enable' : '❌ Disable' },
+              value: `toggle_${prompt.id}`
+            }
+          ]
+        }
+      });
+      
+      if (index < prompts.length - 1) {
+        blocks.push({ type: 'divider' });
+      }
+    });
+  }
+
+  return {
+    type: 'modal',
+    callback_id: 'manage_suggested_prompts',
+    title: { type: 'plain_text', text: 'Manage Suggested Prompts' },
+    close: { type: 'plain_text', text: 'Close' },
+    blocks
   };
 }
 
