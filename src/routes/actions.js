@@ -488,12 +488,21 @@ export function registerActions(app) {
           text: `✅ Trigger "${triggerData.name}" ${action} successfully!`
         });
         
-        // Refresh App Home to show updated trigger count
-        const jiraConfig = await getJiraConfig(teamId);
-        await client.views.publish({
-          user_id: userId,
-          view: homeView(isAdmin, jiraConfig)
-        });
+        // If this was an edit operation, push a refreshed manage triggers view
+        if (metadata.action === 'edit') {
+          const updatedTriggers = await getPersonalTriggers(teamId, userId);
+          await client.views.push({
+            trigger_id: body.trigger_id,
+            view: manageTriggerModal(updatedTriggers)
+          });
+        } else {
+          // For new triggers, refresh App Home to show updated trigger count
+          const jiraConfig = await getJiraConfig(teamId);
+          await client.views.publish({
+            user_id: userId,
+            view: homeView(isAdmin, jiraConfig)
+          });
+        }
       } else {
         await client.chat.postEphemeral({
           channel: userId,
