@@ -7,7 +7,7 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
                                userMessage.toLowerCase().includes('jira');
   
   const ticketSuggestion = isAskingAboutTickets 
-    ? 'You can help users create Jira tickets by suggesting they use "/ticket [description]" or "@mention me with create ticket [description]".'
+    ? 'When users ask to create tickets, I automatically handle it directly - no need to suggest slash commands or @mentions.'
     : '';
 
   // Build personalized agent description based on user settings
@@ -70,6 +70,7 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
     'IMPORTANT: Do not repeat or summarize previous messages in the conversation. Only answer the current question.',
     'Do not echo back what the user just said or previous Q&As unless specifically asked to recall something.',
     'If someone is already using @mention with ticket keywords, do not suggest alternative methods.',
+    'NEVER suggest using slash commands for ticket creation - the bot automatically handles ticket creation requests.',
     'NEVER use double asterisks (**text**) for bold formatting. Use single asterisks (*text*) instead.'
   ];
 

@@ -38,6 +38,35 @@ function resolveViewedChannelId(ctx) {
   );
 }
 
+/** Check if a message is requesting Jira ticket creation */
+function isTicketCreationRequest(message) {
+  const ticketCreationKeywords = ['create ticket', 'make ticket', 'ticket for', 'file ticket', 'log ticket', 'create jira', 'make jira'];
+  const questionKeywords = ['how do i', 'how to', 'what is', 'how can i', 'help me', 'show me', 'explain'];
+  
+  const lowerMessage = message.toLowerCase();
+  const hasTicketKeywords = ticketCreationKeywords.some(keyword => lowerMessage.includes(keyword));
+  const isQuestion = questionKeywords.some(question => lowerMessage.includes(question));
+  
+  // Only treat as ticket creation if it has ticket keywords AND is not a question
+  return hasTicketKeywords && !isQuestion;
+}
+
+/** Extract ticket description from user message */
+function extractTicketDescription(message) {
+  const ticketCreationKeywords = ['create ticket', 'make ticket', 'ticket for', 'file ticket', 'log ticket', 'create jira', 'make jira'];
+  
+  let ticketDescription = message;
+  for (const keyword of ticketCreationKeywords) {
+    // Replace the keyword but preserve connecting words like "for", "about", etc.
+    ticketDescription = ticketDescription.replace(new RegExp(keyword, 'gi'), '').trim();
+  }
+  
+  // Clean up extra whitespace and common connecting words at the start
+  ticketDescription = ticketDescription.replace(/^(for|about|regarding|on|:|-)+\s*/i, '').trim();
+  
+  return ticketDescription;
+}
+
 /** Streaming helper. If initialText is null, first token creates the message (Assistant pane UX). */
 async function streamToSlack({ client, channel, thread_ts, iter, initialText = 'Thinking…', stopAction = null, useBlockKit = false }) {
   let ts = null;
@@ -255,16 +284,8 @@ app.event('*', async ({ event, client, context }) => {
     const user = event.user;
     const prompt = (event.text || '').replace(/<@[^>]+>\s*/, '').trim().slice(0, config.limits?.maxUserChars ?? 4000);
 
-    // Check if this is a ticket creation request (not a question about how to create tickets)
-    const ticketCreationKeywords = ['create ticket', 'make ticket', 'ticket for', 'file ticket', 'log ticket', 'create jira', 'make jira'];
-    const questionKeywords = ['how do i', 'how to', 'what is', 'how can i', 'help me', 'show me', 'explain'];
-    
-    const lowerPrompt = prompt.toLowerCase();
-    const hasTicketKeywords = ticketCreationKeywords.some(keyword => lowerPrompt.includes(keyword));
-    const isQuestion = questionKeywords.some(question => lowerPrompt.includes(question));
-    
-    // Only treat as ticket creation if it has ticket keywords AND is not a question
-    const isTicketRequest = hasTicketKeywords && !isQuestion;
+    // Check if this is a ticket creation request
+    const isTicketRequest = isTicketCreationRequest(prompt);
 
     // Debug: log ticket detection logic
 
@@ -291,14 +312,7 @@ app.event('*', async ({ event, client, context }) => {
         } catch {}
 
         // Extract the ticket description (remove the ticket creation keywords)
-        let ticketDescription = prompt;
-        for (const keyword of ticketCreationKeywords) {
-          // Replace the keyword but preserve connecting words like "for", "about", etc.
-          ticketDescription = ticketDescription.replace(new RegExp(keyword, 'gi'), '').trim();
-        }
-        
-        // Clean up extra whitespace and common connecting words at the start
-        ticketDescription = ticketDescription.replace(/^(for|about|regarding|on|:|-)+\s*/i, '').trim();
+        const ticketDescription = extractTicketDescription(prompt);
         
         if (!ticketDescription || ticketDescription.length < 3) {
           await slackCall(client.chat.postMessage, {
@@ -471,7 +485,81 @@ app.event('*', async ({ event, client, context }) => {
       }
     }
 
-    // Check for dynamic action triggers first (bypass AI) 
+    // Check for Jira ticket creation requests first
+    if (isTicketCreationRequest(userText)) {
+      try {
+        const jiraConfig = await getJiraConfig(team);
+        if (!jiraConfig) {
+          await streamToSlack({
+            client,
+            channel,
+            thread_ts: assistantThreadTs || undefined,
+            iter: (async function* () {
+              yield '⚠️ Jira is not configured for this workspace. Please set it up in the App Home first.';
+            })(),
+            initialText: null
+          });
+          return;
+        }
+
+        // Get recent messages for context
+        let recentMessages = [];
+        try {
+          const hist = await getRecentMessages(client, channel, { limit: 5 });
+          if (hist.ok && hist.messages.length) {
+            recentMessages = hist.messages;
+          }
+        } catch {}
+
+        // Extract the ticket description
+        const ticketDescription = extractTicketDescription(userText);
+        
+        if (!ticketDescription || ticketDescription.length < 3) {
+          await streamToSlack({
+            client,
+            channel,
+            thread_ts: assistantThreadTs || undefined,
+            iter: (async function* () {
+              yield '⚠️ Please provide a description for the ticket.\nExample: `create ticket for login bug - users cannot authenticate`';
+            })(),
+            initialText: null
+          });
+          return;
+        }
+
+        // Extract ticket information and create it
+        const ticketData = extractTicketFromContext(ticketDescription, recentMessages);
+        const result = await createJiraTicket(team, ticketData);
+
+        await streamToSlack({
+          client,
+          channel,
+          thread_ts: assistantThreadTs || undefined,
+          iter: (async function* () {
+            if (result.success) {
+              yield `✅ Jira ticket created successfully!\n🎫 *${result.ticket.key}*: ${result.ticket.summary}\n🔗 <${result.ticket.url}|View ticket>`;
+            } else {
+              yield `❌ Failed to create Jira ticket: ${result.error}`;
+            }
+          })(),
+          initialText: null
+        });
+        return;
+      } catch (error) {
+        await streamToSlack({
+          client,
+          channel,
+          thread_ts: assistantThreadTs || undefined,
+          iter: (async function* () {
+            yield `❌ Error creating ticket: ${error.message}`;
+          })(),
+          initialText: null
+        });
+        return;
+      }
+    }
+
+    // Check for dynamic action triggers (bypass AI) 
     try {
       const matchingTrigger = await findMatchingTrigger(team, user, userText);
       if (matchingTrigger) {
