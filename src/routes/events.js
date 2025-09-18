@@ -178,57 +178,106 @@ app.event('*', async ({ event, client, context }) => {
       logger.error('Error displaying welcome message with prompts:', error);
     }
   }
-  // Handle assistant thread started with suggested prompts
-  app.event('assistant_thread_started', async ({ event, client, context }) => {
-    const channelId = event?.assistant_thread?.channel_id;
-    const threadTs = event?.assistant_thread?.thread_ts;
-    const userId = event?.user;
-    const teamId = context.teamId;
-    
-    logger.info('Assistant thread started:', { userId, teamId, channelId, threadTs });
-    
-    if (channelId && threadTs) {
-      await setAssistantThread(channelId, threadTs);
-    }
-    
-    try {
-      // Send welcome message
-      await client.chat.postMessage({
-        channel: channelId,
-        thread_ts: threadTs,
-        text: '👋 Hi! I\'m your AI Assistant. How can I help you today?'
-      });
+  // Use Bolt Assistant class with proper suggested prompts implementation
+  const assistant = new Assistant(app, {
+    threadStarted: async ({ event, logger, say, setSuggestedPrompts, saveThreadContext }) => {
+      const { context } = event.assistant_thread;
+      const userId = event.user;
+      const teamId = event.team;
       
-      // Set suggested prompts using the official API
-      const suggestedPrompts = await getSuggestedPromptsForAPI(teamId, userId);
-      logger.info('Setting suggested prompts:', { userId, teamId, promptCount: suggestedPrompts.length, prompts: suggestedPrompts });
+      logger.info('Assistant thread started with Bolt Assistant class:', { userId, teamId, context });
       
-      if (suggestedPrompts.length > 0) {
-        logger.info('About to call assistant.threads.setSuggestedPrompts with:', {
-          channel_id: channelId,
-          thread_ts: threadTs,
-          prompts: suggestedPrompts
-        });
+      try {
+        // Send welcome message
+        await say('👋 Hi! I\'m your AI Assistant. How can I help you today?');
         
-        const result = await client.assistant.threads.setSuggestedPrompts({
-          channel_id: channelId,
-          thread_ts: threadTs,
-          prompts: suggestedPrompts
-        });
+        // Save thread context
+        await saveThreadContext();
         
-        logger.info('assistant.threads.setSuggestedPrompts result:', result);
+        // Get user's suggested prompts and convert to proper format
+        const suggestedPrompts = await getSuggestedPromptsForAPI(teamId, userId);
+        logger.info('Retrieved suggested prompts:', { userId, teamId, promptCount: suggestedPrompts.length, prompts: suggestedPrompts });
         
-        if (result.ok) {
-          logger.info('Successfully set suggested prompts via API');
+        if (suggestedPrompts.length > 0) {
+          // Convert to the format expected by setSuggestedPrompts (title + message)
+          const prompts = suggestedPrompts.map(prompt => ({
+            title: prompt.text,    // Button text
+            message: prompt.value  // Message sent when clicked
+          }));
+          
+          logger.info('Setting suggested prompts with Bolt Assistant:', { prompts });
+          
+          // Use the Bolt Assistant setSuggestedPrompts method with proper format
+          await setSuggestedPrompts({ 
+            prompts, 
+            title: 'Here are some suggested options:' 
+          });
+          
+          logger.info('Successfully set suggested prompts via Bolt Assistant');
         } else {
-          logger.error('Failed to set suggested prompts:', result.error);
+          logger.info('No suggested prompts to set for user');
         }
-      } else {
-        logger.info('No suggested prompts to set for user');
+        
+      } catch (error) {
+        logger.error('Error in assistant threadStarted:', error);
+        await say('Sorry, something went wrong! Please try again.');
       }
+    },
+    
+    userMessage: async ({ event, logger, say, client, getThreadContext }) => {
+      const userId = event.user;
+      const teamId = event.team;
+      const message = event.message;
+      const channel = event.channel;
+      const thread_ts = event.thread_ts;
       
-    } catch (error) {
-      logger.error('Error in assistant_thread_started:', error);
+      logger.info('Processing user message in assistant:', { userId, teamId, messageText: message.text });
+      
+      try {
+        // Get thread context
+        const threadContext = await getThreadContext();
+        
+        // Use existing message processing logic from the main message handler
+        const userText = (message.text || '').slice(0, 4000);
+        const key = convoKey({ team: teamId, channel, thread: thread_ts || null, user: userId });
+        
+        // Add user turn to conversation history
+        await store.addUserTurn(key, userText);
+        
+        // Get user's agent settings
+        const { getAgentSettings } = await import('../services/agentSettings.js');
+        const agentSettings = await getAgentSettings(teamId, userId);
+        
+        // Build system prompt
+        const { buildSystemPrompt } = await import('../services/prompt.js');
+        const system = buildSystemPrompt({
+          surface: 'assistant',
+          channelContextText: null,
+          docContext: '',
+          userMessage: userText,
+          agentSettings
+        });
+        
+        // Get conversation history
+        const history = await store.history(key, 20);
+        
+        // Get LLM stream and process
+        const llmStream = getLLMStream();
+        const iter = llmStream({ messages: history, system });
+        
+        // Stream response to user
+        let responseText = '';
+        for await (const chunk of iter) {
+          responseText += chunk;
+        }
+        
+        // Send final response
+        await say(responseText);
+        
+      } catch (error) {
+        logger.error('Error processing user message in assistant:', error);
+        await say('Sorry, something went wrong! Please try again.');
+      }
     }
   });
 
