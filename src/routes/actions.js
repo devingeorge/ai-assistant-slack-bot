@@ -352,10 +352,21 @@ export function registerActions(app) {
           console.log('Found trigger to edit:', triggerToEdit);
           
           if (triggerToEdit) {
-            await client.views.open({
-              trigger_id: body.trigger_id,
-              view: addTriggerModal(triggerToEdit)
-            });
+            console.log('Opening edit modal for trigger:', triggerToEdit.name);
+            try {
+              await client.views.open({
+                trigger_id: body.trigger_id,
+                view: addTriggerModal(triggerToEdit)
+              });
+              console.log('Edit modal opened successfully');
+            } catch (error) {
+              console.error('Error opening edit modal:', error);
+              await client.chat.postEphemeral({
+                channel: userId,
+                user: userId,
+                text: `❌ Failed to open edit modal: ${error.message}`
+              });
+            }
           } else {
             await client.chat.postEphemeral({
               channel: userId,
