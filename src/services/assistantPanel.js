@@ -2,7 +2,28 @@
 import { getSuggestedPrompts } from './suggestedPrompts.js';
 import { logger } from '../lib/logger.js';
 
-/** Generate suggested prompt buttons for the assistant panel */
+/** Generate suggested prompts in the format expected by Slack's assistant.threads.setSuggestedPrompts API */
+export async function getSuggestedPromptsForAPI(teamId, userId) {
+  try {
+    const prompts = await getSuggestedPrompts(teamId, userId);
+    
+    if (prompts.length === 0) {
+      return [];
+    }
+    
+    // Convert to the format expected by Slack's API
+    return prompts.map(prompt => ({
+      text: prompt.name,
+      value: prompt.prompt,
+      description: prompt.description || undefined
+    }));
+  } catch (error) {
+    logger.error('Error getting suggested prompts for API:', error);
+    return [];
+  }
+}
+
+/** Generate suggested prompt buttons for the assistant panel (legacy support) */
 export async function getSuggestedPromptButtons(teamId, userId) {
   try {
     const prompts = await getSuggestedPrompts(teamId, userId);

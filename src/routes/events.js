@@ -21,7 +21,7 @@ import { assistantSearchContext, formatResultsAsBullets } from '../services/data
 import { detectIntent } from '../services/intent.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 import { findMatchingTrigger } from '../services/triggers.js';
-import { getSuggestedPromptButtons } from '../services/assistantPanel.js';
+import { getSuggestedPromptButtons, getSuggestedPromptsForAPI } from '../services/assistantPanel.js';
 
 /** Resolve the channel the user is viewing in the Assistant panel (if present). */
 function resolveViewedChannelId(ctx) {
@@ -112,7 +112,34 @@ export function registerEvents(app) {
 app.event('*', async ({ event, client, context }) => {
 });
 
-  // Function to display welcome message with suggested prompt buttons in assistant panel
+  // Function to set suggested prompts using Slack's official API
+  async function setSuggestedPromptsForAssistant(client, userId, teamId, channelId, threadTs) {
+    try {
+      const suggestedPrompts = await getSuggestedPromptsForAPI(teamId, userId);
+      
+      if (suggestedPrompts.length === 0) {
+        logger.info('No suggested prompts to set for user:', userId);
+        return;
+      }
+      
+      // Use Slack's official assistant.threads.setSuggestedPrompts API
+      const result = await client.assistant.threads.setSuggestedPrompts({
+        channel_id: channelId,
+        thread_ts: threadTs,
+        prompts: suggestedPrompts
+      });
+      
+      if (result.ok) {
+        logger.info('Successfully set suggested prompts:', { userId, promptCount: suggestedPrompts.length });
+      } else {
+        logger.error('Failed to set suggested prompts:', result.error);
+      }
+    } catch (error) {
+      logger.error('Error setting suggested prompts:', error);
+    }
+  }
+
+  // Function to display welcome message with suggested prompt buttons in assistant panel (fallback)
   async function displayWelcomeMessageWithPrompts(client, userId, teamId) {
     try {
       const promptButtons = await getSuggestedPromptButtons(teamId, userId);
@@ -156,11 +183,11 @@ app.event('*', async ({ event, client, context }) => {
       logger.info('Cached assistant thread:', { channelId, threadTs });
     }
     
-    // Display welcome message with suggested prompts when assistant panel is opened
-    if (userId && teamId) {
+    // Set suggested prompts using Slack's official API when assistant panel is opened
+    if (userId && teamId && channelId && threadTs) {
       // Small delay to ensure the assistant panel is fully loaded
       setTimeout(async () => {
-        await displayWelcomeMessageWithPrompts(client, userId, teamId);
+        await setSuggestedPromptsForAssistant(client, userId, teamId, channelId, threadTs);
       }, 1000);
     }
   });

@@ -904,44 +904,6 @@ export function registerActions(app) {
     }
   });
 
-  // Suggested prompt button click handler
-  app.action(/^suggested_prompt_(.+)$/, async ({ ack, body, client, context, action }) => {
-    await ack();
-    
-    try {
-      const teamId = context.teamId || body.team?.id;
-      const userId = body.user?.id;
-      
-      // Extract prompt ID from action_id (format: suggested_prompt_${promptId})
-      const promptId = action.action_id.replace('suggested_prompt_', '');
-      
-      // Get the prompt data
-      const prompt = await getSuggestedPromptById(teamId, userId, promptId);
-      
-      if (!prompt || !prompt.enabled) {
-        await client.chat.postEphemeral({
-          channel: userId,
-          user: userId,
-          text: '❌ This suggested prompt is not available or has been disabled.'
-        });
-        return;
-      }
-      
-      // Send the prompt as a message to the assistant
-      // This will trigger the message event handler in events.js
-      await client.chat.postMessage({
-        channel: userId, // Send to the user's DM
-        text: prompt.prompt,
-        thread_ts: undefined // Send as a new message, not in a thread
-      });
-      
-    } catch (error) {
-      console.error('Suggested prompt button click error:', error);
-      await client.chat.postEphemeral({
-        channel: body.user?.id,
-        user: body.user?.id,
-        text: '❌ Failed to send suggested prompt. Please try again.'
-      });
-    }
-  });
+  // Note: Suggested prompt button clicks are now handled by Slack's native assistant panel
+  // No custom action handler needed - Slack handles the button clicks and sends the prompt value as a message
 }
