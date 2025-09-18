@@ -204,11 +204,19 @@ app.event('*', async ({ event, client, context }) => {
       logger.info('Setting suggested prompts:', { userId, teamId, promptCount: suggestedPrompts.length, prompts: suggestedPrompts });
       
       if (suggestedPrompts.length > 0) {
+        logger.info('About to call assistant.threads.setSuggestedPrompts with:', {
+          channel_id: channelId,
+          thread_ts: threadTs,
+          prompts: suggestedPrompts
+        });
+        
         const result = await client.assistant.threads.setSuggestedPrompts({
           channel_id: channelId,
           thread_ts: threadTs,
           prompts: suggestedPrompts
         });
+        
+        logger.info('assistant.threads.setSuggestedPrompts result:', result);
         
         if (result.ok) {
           logger.info('Successfully set suggested prompts via API');
