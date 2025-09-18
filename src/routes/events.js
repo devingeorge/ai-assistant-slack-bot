@@ -47,6 +47,14 @@ function isTicketCreationRequest(message) {
   const hasTicketKeywords = ticketCreationKeywords.some(keyword => lowerMessage.includes(keyword));
   const isQuestion = questionKeywords.some(question => lowerMessage.includes(question));
   
+  logger.info('Ticket detection:', { 
+    message, 
+    lowerMessage, 
+    hasTicketKeywords, 
+    isQuestion, 
+    result: hasTicketKeywords && !isQuestion 
+  });
+  
   // Only treat as ticket creation if it has ticket keywords AND is not a question
   return hasTicketKeywords && !isQuestion;
 }
@@ -486,6 +494,7 @@ app.event('*', async ({ event, client, context }) => {
     }
 
     // Check for Jira ticket creation requests first
+    logger.info('Checking ticket creation request:', { userText, isTicketRequest: isTicketCreationRequest(userText) });
     if (isTicketCreationRequest(userText)) {
       try {
         const jiraConfig = await getJiraConfig(team);
