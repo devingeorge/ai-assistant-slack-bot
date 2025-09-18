@@ -230,11 +230,15 @@ export function manageTriggerModal(triggers = []) {
     blocks.push({ type: 'divider' });
     
     triggers.forEach((trigger, index) => {
+      const isDisabled = trigger.enabled === false;
+      const statusIcon = isDisabled ? '🔴' : '🟢';
+      const statusText = isDisabled ? ' (DISABLED)' : '';
+      
       blocks.push({
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*${trigger.name}*\n` +
+          text: `${statusIcon} *${trigger.name}*${statusText}\n` +
                 `_Triggers:_ ${trigger.inputPhrases.slice(0, 3).join(', ')}${trigger.inputPhrases.length > 3 ? '...' : ''}\n` +
                 `_Response:_ ${trigger.response.slice(0, 100)}${trigger.response.length > 100 ? '...' : ''}\n` +
                 `_Scope:_ ${trigger.scope === 'workspace' ? '🌐 Workspace' : '👤 Personal'}`
@@ -252,7 +256,7 @@ export function manageTriggerModal(triggers = []) {
               value: `delete_${trigger.id}`
             },
             {
-              text: { type: 'plain_text', text: '🔄 Toggle Enabled' },
+              text: { type: 'plain_text', text: isDisabled ? '✅ Enable' : '❌ Disable' },
               value: `toggle_${trigger.id}`
             }
           ]

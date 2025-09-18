@@ -81,6 +81,29 @@ export async function getTriggers(teamId, userId) {
   }
 }
 
+/** Get all triggers (including disabled) for management */
+export async function getAllTriggers(teamId, userId) {
+  try {
+    const personalKey = triggerKey(teamId, userId, 'personal');
+    const workspaceKey = triggerKey(teamId, userId, 'workspace');
+    
+    const [personalTriggers, workspaceTriggers] = await Promise.all([
+      store.get(personalKey) || [],
+      store.get(workspaceKey) || []
+    ]);
+
+    const allTriggers = [
+      ...(personalTriggers || []),
+      ...(workspaceTriggers || [])
+    ];
+
+    return allTriggers;
+  } catch (error) {
+    logger.error('Error getting all triggers:', error);
+    return [];
+  }
+}
+
 /** Get user's personal triggers for management */
 export async function getPersonalTriggers(teamId, userId) {
   try {

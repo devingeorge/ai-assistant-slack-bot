@@ -14,6 +14,7 @@ import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/j
 import { 
   saveTrigger, 
   getTriggers,
+  getAllTriggers,
   getPersonalTriggers, 
   deleteTrigger, 
   toggleTrigger, 
@@ -284,7 +285,7 @@ export function registerActions(app) {
       
       console.log('Manage triggers - teamId:', teamId, 'userId:', userId);
       
-      const triggers = await getTriggers(teamId, userId);
+      const triggers = await getAllTriggers(teamId, userId);
       
       // Debug: log triggers retrieved
       console.log('Manage triggers - retrieved:', triggers.length, 'triggers');
@@ -345,7 +346,7 @@ export function registerActions(app) {
       switch (actionType) {
         case 'edit':
           // Get trigger data from personal triggers (since manage modal only shows personal triggers)
-          const personalTriggers = await getTriggers(teamId, userId);
+          const personalTriggers = await getAllTriggers(teamId, userId);
           const triggerToEdit = personalTriggers.find(t => t.id === targetId);
           
           console.log('Edit action - looking for trigger ID:', targetId);
@@ -391,7 +392,7 @@ export function registerActions(app) {
             });
             
             // Refresh the manage modal
-            const updatedTriggers = await getTriggers(teamId, userId);
+            const updatedTriggers = await getAllTriggers(teamId, userId);
             console.log('After delete - remaining triggers:', updatedTriggers.length);
             
             await client.views.update({
@@ -418,7 +419,7 @@ export function registerActions(app) {
             });
             
             // Refresh the manage modal
-            const refreshedTriggers = await getTriggers(teamId, userId);
+            const refreshedTriggers = await getAllTriggers(teamId, userId);
             await client.views.update({
               view_id: body.view?.id,
               view: manageTriggerModal(refreshedTriggers)
@@ -487,7 +488,7 @@ export function registerActions(app) {
         
         // If this was an edit operation, update the current view with refreshed data
         if (metadata.action === 'edit') {
-          const updatedTriggers = await getTriggers(teamId, userId);
+          const updatedTriggers = await getAllTriggers(teamId, userId);
           await ack({
             response_action: 'update',
             view: manageTriggerModal(updatedTriggers)
