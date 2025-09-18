@@ -182,10 +182,10 @@ app.event('*', async ({ event, client, context }) => {
   app.event('assistant_thread_started', async ({ event, client, context }) => {
     const channelId = event?.assistant_thread?.channel_id;
     const threadTs = event?.assistant_thread?.thread_ts;
-    const userId = event?.user;
+    const userId = event?.user || event?.assistant_thread?.user;
     const teamId = context.teamId;
     
-    logger.info('Assistant thread started:', { userId, teamId, channelId, threadTs });
+    logger.info('Assistant thread started:', { userId, teamId, channelId, threadTs, fullEvent: event });
     
     if (channelId && threadTs) {
       await setAssistantThread(channelId, threadTs);
