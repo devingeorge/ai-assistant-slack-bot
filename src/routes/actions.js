@@ -332,7 +332,10 @@ export function registerActions(app) {
       
       if (!selectedValue) return;
       
-      const [actionType, targetId] = selectedValue.split('_');
+      // Parse selected value: format is "actionType_triggerId"
+      const firstUnderscore = selectedValue.indexOf('_');
+      const actionType = selectedValue.substring(0, firstUnderscore);
+      const targetId = selectedValue.substring(firstUnderscore + 1);
       console.log('Action type:', actionType, 'Target ID:', targetId);
       
       const userInfo = await client.users.info({ user: userId });
