@@ -178,106 +178,64 @@ app.event('*', async ({ event, client, context }) => {
       logger.error('Error displaying welcome message with prompts:', error);
     }
   }
-  // Use Bolt Assistant class with proper suggested prompts implementation
-  const assistant = new Assistant(app, {
-    threadStarted: async ({ event, logger, say, setSuggestedPrompts, saveThreadContext }) => {
-      const { context } = event.assistant_thread;
-      const userId = event.user;
-      const teamId = event.team;
-      
-      logger.info('Assistant thread started with Bolt Assistant class:', { userId, teamId, context });
-      
-      try {
-        // Send welcome message
-        await say('👋 Hi! I\'m your AI Assistant. How can I help you today?');
-        
-        // Save thread context
-        await saveThreadContext();
-        
-        // Get user's suggested prompts and convert to proper format
-        const suggestedPrompts = await getSuggestedPromptsForAPI(teamId, userId);
-        logger.info('Retrieved suggested prompts:', { userId, teamId, promptCount: suggestedPrompts.length, prompts: suggestedPrompts });
-        
-        if (suggestedPrompts.length > 0) {
-          // Convert to the format expected by setSuggestedPrompts (title + message)
-          const prompts = suggestedPrompts.map(prompt => ({
-            title: prompt.text,    // Button text
-            message: prompt.value  // Message sent when clicked
-          }));
-          
-          logger.info('Setting suggested prompts with Bolt Assistant:', { prompts });
-          
-          // Use the Bolt Assistant setSuggestedPrompts method with proper format
-          await setSuggestedPrompts({ 
-            prompts, 
-            title: 'Here are some suggested options:' 
-          });
-          
-          logger.info('Successfully set suggested prompts via Bolt Assistant');
-        } else {
-          logger.info('No suggested prompts to set for user');
-        }
-        
-      } catch (error) {
-        logger.error('Error in assistant threadStarted:', error);
-        await say('Sorry, something went wrong! Please try again.');
-      }
-    },
+  // Handle assistant thread started with suggested prompts (raw event handler)
+  app.event('assistant_thread_started', async ({ event, client, context }) => {
+    const channelId = event?.assistant_thread?.channel_id;
+    const threadTs = event?.assistant_thread?.thread_ts;
+    const userId = event?.user;
+    const teamId = context.teamId;
     
-    userMessage: async ({ event, logger, say, client, getThreadContext }) => {
-      const userId = event.user;
-      const teamId = event.team;
-      const message = event.message;
-      const channel = event.channel;
-      const thread_ts = event.thread_ts;
+    logger.info('Assistant thread started:', { userId, teamId, channelId, threadTs });
+    
+    if (channelId && threadTs) {
+      await setAssistantThread(channelId, threadTs);
+    }
+    
+    try {
+      // Send welcome message
+      await client.chat.postMessage({
+        channel: channelId,
+        thread_ts: threadTs,
+        text: '👋 Hi! I\'m your AI Assistant. How can I help you today?'
+      });
       
-      logger.info('Processing user message in assistant:', { userId, teamId, messageText: message.text });
+      // Get user's suggested prompts and convert to proper format
+      const suggestedPrompts = await getSuggestedPromptsForAPI(teamId, userId);
+      logger.info('Retrieved suggested prompts:', { userId, teamId, promptCount: suggestedPrompts.length, prompts: suggestedPrompts });
       
-      try {
-        // Get thread context
-        const threadContext = await getThreadContext();
+      if (suggestedPrompts.length > 0) {
+        // Convert to the format expected by the API: { prompts: [{ text, value }] }
+        const prompts = suggestedPrompts.map(prompt => ({
+          text: prompt.text,    // Button text
+          value: prompt.value   // Message sent when clicked
+        }));
         
-        // Use existing message processing logic from the main message handler
-        const userText = (message.text || '').slice(0, 4000);
-        const key = convoKey({ team: teamId, channel, thread: thread_ts || null, user: userId });
-        
-        // Add user turn to conversation history
-        await store.addUserTurn(key, userText);
-        
-        // Get user's agent settings
-        const { getAgentSettings } = await import('../services/agentSettings.js');
-        const agentSettings = await getAgentSettings(teamId, userId);
-        
-        // Build system prompt
-        const { buildSystemPrompt } = await import('../services/prompt.js');
-        const system = buildSystemPrompt({
-          surface: 'assistant',
-          channelContextText: null,
-          docContext: '',
-          userMessage: userText,
-          agentSettings
+        logger.info('About to call assistant.threads.setSuggestedPrompts with:', {
+          channel_id: channelId,
+          thread_ts: threadTs,
+          prompts: prompts
         });
         
-        // Get conversation history
-        const history = await store.history(key, 20);
+        // Use the raw API call with proper format
+        const result = await client.assistant.threads.setSuggestedPrompts({
+          channel_id: channelId,
+          thread_ts: threadTs,
+          prompts: prompts
+        });
         
-        // Get LLM stream and process
-        const llmStream = getLLMStream();
-        const iter = llmStream({ messages: history, system });
+        logger.info('assistant.threads.setSuggestedPrompts result:', result);
         
-        // Stream response to user
-        let responseText = '';
-        for await (const chunk of iter) {
-          responseText += chunk;
+        if (result.ok) {
+          logger.info('Successfully set suggested prompts via API');
+        } else {
+          logger.error('Failed to set suggested prompts:', result.error);
         }
-        
-        // Send final response
-        await say(responseText);
-        
-      } catch (error) {
-        logger.error('Error processing user message in assistant:', error);
-        await say('Sorry, something went wrong! Please try again.');
+      } else {
+        logger.info('No suggested prompts to set for user');
       }
+      
+    } catch (error) {
+      logger.error('Error in assistant_thread_started:', error);
     }
   });
 
