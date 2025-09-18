@@ -37,7 +37,7 @@ function resolveViewedChannelId(ctx) {
 }
 
 /** Streaming helper. If initialText is null, first token creates the message (Assistant pane UX). */
-async function streamToSlack({ client, channel, thread_ts, iter, initialText = 'Thinking…', stopAction = null }) {
+async function streamToSlack({ client, channel, thread_ts, iter, initialText = 'Thinking…', stopAction = null, useBlockKit = false }) {
   let ts = null;
   let buf = '';
   let last = 0;
@@ -67,12 +67,12 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
 
       if (!ts) {
         const messageContent = initialText == null ? buf.slice(0, 3900) : initialText;
-        const blockKitMessage = initialText == null ? formatResponseAsBlocks(messageContent) : { text: messageContent };
+        const messageFormat = initialText == null && useBlockKit ? formatResponseAsBlocks(messageContent) : { text: messageContent };
         
         const posted = await slackCall(client.chat.postMessage, {
           channel,
           thread_ts,
-          ...blockKitMessage,
+          ...messageFormat,
           blocks: stopBlocks
         });
         ts = posted.ts;
@@ -81,11 +81,11 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
 
       const now = Date.now();
       if (now - last > 700) {
-        const blockKitMessage = formatResponseAsBlocks(buf.slice(0, 3900));
+        const messageFormat = useBlockKit ? formatResponseAsBlocks(buf.slice(0, 3900)) : { text: buf.slice(0, 3900) };
         await slackCall(client.chat.update, { 
           channel, 
           ts, 
-          ...blockKitMessage,
+          ...messageFormat,
           blocks: stopBlocks // Keep stop button during generation
         });
         last = now;
@@ -93,12 +93,12 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
     }
 
     if (ts) {
-      // Final update - format as Block Kit and remove stop button when complete
-      const blockKitMessage = formatResponseAsBlocks(buf.slice(0, 3900));
+      // Final update - conditionally format as Block Kit and remove stop button when complete
+      const messageFormat = useBlockKit ? formatResponseAsBlocks(buf.slice(0, 3900)) : { text: buf.slice(0, 3900) };
       await slackCall(client.chat.update, { 
         channel, 
         ts, 
-        ...blockKitMessage // Use Block Kit format
+        ...messageFormat
       });
     }
   } catch (e) {
@@ -304,7 +304,8 @@ app.event('*', async ({ event, client, context }) => {
       channelContextText: effectiveChannelContext || null,
       docContext,
       userMessage: prompt,
-      agentSettings
+      agentSettings,
+      useBlockKit: true // Use Block Kit for channel responses
     });
 
     const history = await store.history(key);
@@ -317,7 +318,8 @@ app.event('*', async ({ event, client, context }) => {
       thread_ts,
       iter,
       initialText: 'Thinking…',
-      stopAction: 'stop_generation' // Enable stop button in the actual response
+      stopAction: 'stop_generation', // Enable stop button in the actual response
+      useBlockKit: true // Use Block Kit for channel responses
     });
   });
 

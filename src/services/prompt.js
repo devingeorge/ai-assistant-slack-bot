@@ -1,7 +1,7 @@
 // src/services/prompt.js
 // Central place to build system prompts + guardrails.
 
-export function buildSystemPrompt({ surface, channelContextText, docContext, userMessage = '', agentSettings = null }) {
+export function buildSystemPrompt({ surface, channelContextText, docContext, userMessage = '', agentSettings = null, useBlockKit = false }) {
   // Check if user is asking about ticket creation in their message
   const isAskingAboutTickets = userMessage.toLowerCase().includes('ticket') || 
                                userMessage.toLowerCase().includes('jira');
@@ -60,7 +60,7 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
   
   const base =
     surface === 'channel'
-      ? `${agentDescription} Keep replies concise and answer in the thread. Structure your responses with clear sections, headers, and bullet points for professional presentation. ${ticketSuggestion}`
+      ? `${agentDescription} Keep replies concise and answer in the thread. ${useBlockKit ? 'Structure your responses with clear sections, headers, and bullet points for professional presentation.' : 'Use clear, conversational formatting.'} ${ticketSuggestion}`
       : `${agentDescription} Be brief, conversational, and helpful. ${ticketSuggestion}`;
 
   const guardrails = [
@@ -73,7 +73,7 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
   ];
 
   // Add formatting guidelines for channel responses
-  const formattingGuidelines = surface === 'channel' ? [
+  const formattingGuidelines = surface === 'channel' && useBlockKit ? [
     'Structure responses with clear headers ending in colons (e.g., "Overview:", "Recommendations:", "Next Steps:").',
     'Use bullet points (•) for lists and recommendations, for blocks that contain bullets, the block type should be rich_text_list and the style should be bullet.',
     'Add relevant emojis to headers for visual appeal (🔍 Overview, ⚠️ Warnings, ✅ Recommendations, etc.).',

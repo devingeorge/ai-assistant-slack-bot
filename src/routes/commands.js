@@ -11,7 +11,7 @@ import { getLLMStream } from '../services/llm.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 
 /** Small stream helper for slash commands. */
-async function streamToSlack({ client, channel, thread_ts, iter, initialText = 'Thinking…' }) {
+async function streamToSlack({ client, channel, thread_ts, iter, initialText = 'Thinking…', useBlockKit = true }) {
   let ts = null;
   let buf = '';
   let last = 0;
@@ -27,15 +27,15 @@ async function streamToSlack({ client, channel, thread_ts, iter, initialText = '
     buf += chunk;
     const now = Date.now();
     if (now - last > 700) {
-      const blockKitMessage = formatResponseAsBlocks(buf.slice(0, 3900));
-      await slackCall(client.chat.update, { channel, ts, ...blockKitMessage });
+      const messageFormat = useBlockKit ? formatResponseAsBlocks(buf.slice(0, 3900)) : { text: buf.slice(0, 3900) };
+      await slackCall(client.chat.update, { channel, ts, ...messageFormat });
       last = now;
     }
   }
 
   if (ts) {
-    const blockKitMessage = formatResponseAsBlocks(buf.slice(0, 3900));
-    await slackCall(client.chat.update, { channel, ts, ...blockKitMessage });
+    const messageFormat = useBlockKit ? formatResponseAsBlocks(buf.slice(0, 3900)) : { text: buf.slice(0, 3900) };
+    await slackCall(client.chat.update, { channel, ts, ...messageFormat });
   }
 }
 
@@ -106,7 +106,8 @@ export function registerCommands(app) {
         channelContextText,
         docContext,
         userMessage: text,
-        agentSettings
+        agentSettings,
+        useBlockKit: true // Use Block Kit for channel responses
       });
 
       const history = await store.history(key);
