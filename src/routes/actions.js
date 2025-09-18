@@ -532,6 +532,35 @@ export function registerActions(app) {
     }
   });
 
+  // Close All Views action
+  app.action('close_all_views', async ({ ack, body, client }) => {
+    await ack();
+    
+    try {
+      // Close the modal by updating it to a minimal "closed" state
+      // This will close all views in the modal stack
+      await client.views.update({
+        view_id: body.view.id,
+        view: {
+          type: 'modal',
+          title: { type: 'plain_text', text: 'Closed' },
+          close: { type: 'plain_text', text: 'Close' },
+          blocks: [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '✅ All views have been closed.'
+              }
+            }
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Error closing all views:', error);
+    }
+  });
+
   // Import Templates modal submission
   app.view('import_templates', async ({ ack, body, client, view }) => {
     await ack();

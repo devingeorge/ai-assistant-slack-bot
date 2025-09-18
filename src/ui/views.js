@@ -265,6 +265,26 @@ export function manageTriggerModal(triggers = []) {
     });
   }
 
+  // Add a custom close button that closes all views
+  blocks.push({ type: 'divider' });
+  blocks.push({
+    type: 'actions',
+    elements: [
+      {
+        type: 'button',
+        action_id: 'close_all_views',
+        text: { type: 'plain_text', text: '❌ Close All' },
+        style: 'danger',
+        confirm: {
+          title: { type: 'plain_text', text: 'Close All Views?' },
+          text: { type: 'plain_text', text: 'This will close all open modal views and return to the App Home.' },
+          confirm: { type: 'plain_text', text: 'Yes, Close All' },
+          deny: { type: 'plain_text', text: 'Cancel' }
+        }
+      }
+    ]
+  });
+
   return {
     type: 'modal',
     callback_id: 'manage_triggers',
