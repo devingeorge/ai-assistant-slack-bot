@@ -69,7 +69,8 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
     'Never fabricate internal policy; if docs context is provided, cite or summarize it.',
     'IMPORTANT: Do not repeat or summarize previous messages in the conversation. Only answer the current question.',
     'Do not echo back what the user just said or previous Q&As unless specifically asked to recall something.',
-    'If someone is already using @mention with ticket keywords, do not suggest alternative methods.'
+    'If someone is already using @mention with ticket keywords, do not suggest alternative methods.',
+    'NEVER use double asterisks (**text**) for bold formatting. Use single asterisks (*text*) instead.'
   ];
 
   // Add formatting guidelines for channel responses
