@@ -204,10 +204,10 @@ app.event('*', async ({ event, client, context }) => {
       logger.info('Retrieved suggested prompts:', { userId, teamId, promptCount: suggestedPrompts.length, prompts: suggestedPrompts });
       
       if (suggestedPrompts.length > 0) {
-        // Convert to the format expected by the API: { prompts: [{ text, value }] }
+        // Convert to the format expected by the API: { prompts: [{ title, message }] }
         const prompts = suggestedPrompts.map(prompt => ({
-          text: prompt.text,    // Button text
-          value: prompt.value   // Message sent when clicked
+          title: prompt.text,    // Button text
+          message: prompt.value  // Message sent when clicked
         }));
         
         logger.info('About to call assistant.threads.setSuggestedPrompts with:', {
