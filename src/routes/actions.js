@@ -484,15 +484,15 @@ export function registerActions(app) {
       if (result.success) {
         const action = metadata.action === 'edit' ? 'updated' : 'created';
         
-        // If this was an edit operation, push a refreshed manage triggers view
+        // If this was an edit operation, update the current view with refreshed data
         if (metadata.action === 'edit') {
           const updatedTriggers = await getPersonalTriggers(teamId, userId);
           await ack({
-            response_action: 'push',
+            response_action: 'update',
             view: manageTriggerModal(updatedTriggers)
           });
           
-          // Send success message after pushing the view
+          // Send success message after updating the view
           await client.chat.postEphemeral({
             channel: userId,
             user: userId,
@@ -529,35 +529,6 @@ export function registerActions(app) {
           trigger_name: 'An error occurred while saving the trigger'
         }
       });
-    }
-  });
-
-  // Close All Views action
-  app.action('close_all_views', async ({ ack, body, client }) => {
-    await ack();
-    
-    try {
-      // Close the modal by updating it to a minimal "closed" state
-      // This will close all views in the modal stack
-      await client.views.update({
-        view_id: body.view.id,
-        view: {
-          type: 'modal',
-          title: { type: 'plain_text', text: 'Closed' },
-          close: { type: 'plain_text', text: 'Close' },
-          blocks: [
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: '✅ All views have been closed.'
-              }
-            }
-          ]
-        }
-      });
-    } catch (error) {
-      console.error('Error closing all views:', error);
     }
   });
 
