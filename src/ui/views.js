@@ -69,7 +69,7 @@ export function homeView(isAdmin = false, jiraConfig = null, agentSettings = nul
   blocks.push({ type: 'divider' });
   blocks.push({
     type: 'header',
-    text: { type: 'plain_text', text: '⚙️ Agent Settings', emoji: true }
+    text: { type: 'plain_text', text: '🤖 Agent Settings', emoji: true }
   });
   
   // Show current agent settings
@@ -101,12 +101,12 @@ export function homeView(isAdmin = false, jiraConfig = null, agentSettings = nul
       detailed: 'Detailed'
     };
     
-    let settingsText = `*Current Agent Configuration:*\n`;
-    settingsText += `• **Tone:** ${toneLabels[tone] || 'Professional'}\n`;
-    settingsText += `• **Company Type:** ${companyLabels[companyType] || 'General Business'}\n`;
-    settingsText += `• **Response Length:** ${lengthLabels[responseLength] || 'Balanced'}\n`;
+    let settingsText = `🎯 *Current Agent Configuration*\n\n`;
+    settingsText += `🔸 *Tone:* ${toneLabels[tone] || 'Professional'}\n`;
+    settingsText += `🏢 *Company Type:* ${companyLabels[companyType] || 'General Business'}\n`;
+    settingsText += `📏 *Response Length:* ${lengthLabels[responseLength] || 'Balanced'}\n`;
     if (specialty && specialty.trim()) {
-      settingsText += `• **Specialty:** ${specialty}\n`;
+      settingsText += `🎯 *Specialty:* ${specialty}\n`;
     }
     
     blocks.push({
@@ -122,12 +122,31 @@ export function homeView(isAdmin = false, jiraConfig = null, agentSettings = nul
         style: 'primary'
       }
     });
+    
+    // Add Reset button
+    blocks.push({
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          action_id: 'reset_agent_settings',
+          text: { type: 'plain_text', text: '🔄 Reset to Defaults' },
+          style: 'danger',
+          confirm: {
+            title: { type: 'plain_text', text: 'Reset Agent Settings?' },
+            text: { type: 'plain_text', text: 'This will clear all your custom agent settings and restore default behavior. This action cannot be undone.' },
+            confirm: { type: 'plain_text', text: 'Yes, Reset' },
+            deny: { type: 'plain_text', text: 'Cancel' }
+          }
+        }
+      ]
+    });
   } else {
     blocks.push({
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: '*Customize your AI assistant*\nSet tone, company type, specialty, and response style to personalize your experience.'
+        text: '🎯 *Customize Your AI Assistant*\n\nSet tone, company type, specialty, and response style to personalize your experience.\n\n*Default Settings:* Professional tone, General Business, Balanced responses'
       },
       accessory: {
         type: 'button',

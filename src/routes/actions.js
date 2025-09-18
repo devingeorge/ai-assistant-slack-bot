@@ -25,6 +25,7 @@ import {
   getAgentSettings, 
   saveAgentSettings 
 } from '../services/agentSettings.js';
+import { store } from '../services/store.js';
 
 export function registerActions(app) {
   // Remove catch-all debug handler to prevent spam
@@ -558,6 +559,39 @@ export function registerActions(app) {
       });
     } catch (error) {
       console.error('Configure agent error:', error);
+    }
+  });
+
+  // Reset Agent Settings action
+  app.action('reset_agent_settings', async ({ ack, body, client, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      // Delete the agent settings (this will make getAgentSettings return defaults)
+      const key = `agent_settings:${teamId}:${userId}`;
+      await store.del(key);
+      
+      await client.chat.postEphemeral({
+        channel: userId,
+        user: userId,
+        text: '✅ Agent settings reset to defaults! Your AI assistant will now use standard behavior.'
+      });
+      
+      // Refresh App Home to show reset state
+      const userInfo = await client.users.info({ user: userId });
+      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+      const jiraConfig = await getJiraConfig(teamId);
+      const agentSettings = await getAgentSettings(teamId, userId); // This will return defaults now
+      
+      await client.views.publish({
+        user_id: userId,
+        view: homeView(isAdmin, jiraConfig, agentSettings)
+      });
+    } catch (error) {
+      console.error('Reset agent settings error:', error);
     }
   });
 
