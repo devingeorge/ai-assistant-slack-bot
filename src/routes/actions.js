@@ -321,24 +321,31 @@ export function registerActions(app) {
       const userId = body.user?.id;
       
       console.log('Trigger action - teamId:', teamId, 'userId:', userId);
-      const triggerId = action.action_id.split('_')[2];
+      console.log('Action ID:', action.action_id);
+      
+      // Extract trigger ID from action_id (format: trigger_actions_${triggerId})
+      const triggerId = action.action_id.replace('trigger_actions_', '');
+      console.log('Extracted trigger ID:', triggerId);
+      
       const selectedValue = action.selected_option?.value;
+      console.log('Selected value:', selectedValue);
       
       if (!selectedValue) return;
       
       const [actionType, targetId] = selectedValue.split('_');
+      console.log('Action type:', actionType, 'Target ID:', targetId);
       
       const userInfo = await client.users.info({ user: userId });
       const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
       
       switch (actionType) {
         case 'edit':
-          // Get trigger data and open edit modal
-          const triggers = await getPersonalTriggers(teamId, userId);
-          const triggerToEdit = triggers.find(t => t.id === targetId);
+          // Get trigger data from personal triggers (since manage modal only shows personal triggers)
+          const personalTriggers = await getPersonalTriggers(teamId, userId);
+          const triggerToEdit = personalTriggers.find(t => t.id === targetId);
           
           console.log('Edit action - looking for trigger ID:', targetId);
-          console.log('Available triggers:', triggers.map(t => ({ id: t.id, name: t.name })));
+          console.log('Personal triggers:', personalTriggers.map(t => ({ id: t.id, name: t.name })));
           console.log('Found trigger to edit:', triggerToEdit);
           
           if (triggerToEdit) {
