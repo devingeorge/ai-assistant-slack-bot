@@ -60,7 +60,7 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
   
   const base =
     surface === 'channel'
-      ? `${agentDescription} Keep replies concise and answer in the thread. ${ticketSuggestion}`
+      ? `${agentDescription} Keep replies concise and answer in the thread. Use rich formatting with **bold text**, bullet points, emojis, and clear structure to make responses engaging and easy to read. ${ticketSuggestion}`
       : `${agentDescription} Be brief, conversational, and helpful. ${ticketSuggestion}`;
 
   const guardrails = [
@@ -72,7 +72,21 @@ export function buildSystemPrompt({ surface, channelContextText, docContext, use
     'If someone is already using @mention with ticket keywords, do not suggest alternative methods.'
   ];
 
+  // Add formatting guidelines for channel responses
+  const formattingGuidelines = surface === 'channel' ? [
+    'Use **bold** for important terms, headings, and key points.',
+    'Use bullet points (•) for lists and recommendations.',
+    'Add relevant emojis to make responses more engaging (🔍 for investigation, ⚠️ for warnings, ✅ for confirmations, etc.).',
+    'Structure responses with clear sections when appropriate.',
+    'Use line breaks to separate different topics or sections.',
+    'Make technical information accessible with clear explanations.'
+  ] : [];
+
   const sections = [base, `Rules:\n- ${guardrails.join('\n- ')}`];
+
+  if (formattingGuidelines.length > 0) {
+    sections.push(`Formatting Guidelines:\n- ${formattingGuidelines.join('\n- ')}`);
+  }
 
   if (channelContextText) sections.push(`Slack context:\n${channelContextText}`);
   if (docContext) sections.push(`Docs context:\n${docContext}`);
