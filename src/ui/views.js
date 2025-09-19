@@ -953,7 +953,7 @@ export function manageMonitoredChannelsModal(channels) {
   return {
     type: 'modal',
     callback_id: 'manage_monitored_channels',
-    title: { type: 'plain_text', text: 'Manage Monitored Channels' },
+    title: { type: 'plain_text', text: 'Manage Channels' },
     close: { type: 'plain_text', text: 'Close' },
     blocks
   };

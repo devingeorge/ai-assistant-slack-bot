@@ -937,20 +937,12 @@ export function registerActions(app) {
     
     try {
       const teamId = context.teamId || body.team?.id;
-      console.log('Manage monitored channels clicked:', { teamId, body, context });
-      
       const channels = await getMonitoredChannels(teamId);
-      console.log('Retrieved monitored channels:', channels);
       
-      const modal = manageMonitoredChannelsModal(channels);
-      console.log('Generated modal:', JSON.stringify(modal, null, 2));
-      
-      const result = await client.views.open({
+      await client.views.open({
         trigger_id: body.trigger_id,
-        view: modal
+        view: manageMonitoredChannelsModal(channels)
       });
-      
-      console.log('Modal open result:', result);
     } catch (error) {
       console.error('Manage monitored channels modal error:', error);
     }
