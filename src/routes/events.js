@@ -552,8 +552,22 @@ app.event('*', async ({ event, client, context }) => {
       });
 
       // Check if we should create a Jira ticket (after 2nd bot response)
+      logger.info('Checking auto-Jira ticket creation:', { 
+        autoCreateJiraTickets: monitoredChannel.autoCreateJiraTickets,
+        team, 
+        channel, 
+        threadTs: message.ts 
+      });
+      
       if (monitoredChannel.autoCreateJiraTickets) {
         const responseCount = await incrementThreadResponseCount(team, channel, message.ts);
+        
+        logger.info('Thread response count:', { 
+          team, 
+          channel, 
+          threadTs: message.ts, 
+          responseCount 
+        });
         
         if (responseCount === 2) {
           logger.info('Creating auto Jira ticket after 2nd bot response:', { team, channel, threadTs: message.ts });
@@ -578,7 +592,10 @@ This ticket was automatically created after the bot's 2nd response in the thread
 
             // Extract ticket information and create it
             const ticketData = extractTicketFromContext(ticketDescription, recentMessages);
+            logger.info('Ticket data for auto-Jira creation:', ticketData);
+            
             const jiraResult = await createJiraTicket(team, ticketData);
+            logger.info('Jira creation result:', jiraResult);
 
             if (jiraResult.success) {
               // Post the Jira ticket link in the thread
