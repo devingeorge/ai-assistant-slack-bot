@@ -13,7 +13,8 @@ import {
   addSuggestedPromptModal,
   manageSuggestedPromptsModal,
   addMonitoredChannelModal,
-  manageMonitoredChannelsModal
+  manageMonitoredChannelsModal,
+  editMonitoredChannelModal
 } from '../ui/views.js';
 import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/jira.js';
 import { 
@@ -966,20 +967,22 @@ export function registerActions(app) {
       
       switch (actionType) {
         case 'edit':
-          // TODO: Implement edit functionality
-          await client.chat.postEphemeral({
-            channel: userId,
-            user: userId,
-            text: '✏️ Edit functionality coming soon!'
-          });
+          const channels = await getMonitoredChannels(teamId);
+          const channelToEdit = channels.find(c => c.channelId === targetId);
+          if (channelToEdit) {
+            await client.views.open({
+              trigger_id: body.trigger_id,
+              view: editMonitoredChannelModal(channelToEdit)
+            });
+          }
           break;
           
         case 'toggle':
-          const channels = await getMonitoredChannels(teamId);
-          const channel = channels.find(c => c.channelId === targetId);
-          if (channel) {
+          const toggleChannels = await getMonitoredChannels(teamId);
+          const toggleChannel = toggleChannels.find(c => c.channelId === targetId);
+          if (toggleChannel) {
             const result = await updateMonitoredChannel(teamId, targetId, { 
-              enabled: !channel.enabled 
+              enabled: !toggleChannel.enabled 
             });
             if (result.success) {
               const status = result.channel.enabled ? 'enabled' : 'disabled';
@@ -1088,6 +1091,53 @@ export function registerActions(app) {
       }
     } catch (error) {
       console.error('Monitored channel submission error:', error);
+    }
+  });
+
+  // Edit Monitored Channel modal submission
+  app.view('edit_monitored_channel', async ({ ack, body, client, view, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const metadata = JSON.parse(view.private_metadata);
+      const channelId = metadata.channelId;
+      
+      const values = view.state.values;
+      const responseType = values.response_type?.response_type_input?.selected_option?.value;
+      const autoJiraTickets = values.auto_jira_tickets?.auto_jira_input?.selected_options?.some(option => option.value === 'enabled') || false;
+      
+      if (!responseType) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '❌ Please select a response type'
+        });
+        return;
+      }
+      
+      const result = await updateMonitoredChannel(teamId, channelId, {
+        responseType,
+        autoCreateJiraTickets: autoJiraTickets
+      });
+      
+      if (result.success) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `✅ Channel settings updated successfully!\nResponse Type: ${responseType}\nAuto-Jira Tickets: ${autoJiraTickets ? 'Enabled' : 'Disabled'}`
+        });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to update channel: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Edit monitored channel submission error:', error);
     }
   });
 }

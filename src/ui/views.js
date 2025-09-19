@@ -897,7 +897,7 @@ export function addMonitoredChannelModal() {
           action_id: 'auto_jira_input',
           options: [
             {
-              text: { type: 'plain_text', text: 'Create Jira ticket after 2nd bot response in thread' },
+              text: { type: 'plain_text', text: 'Create Jira ticket after 1st bot response in thread' },
               value: 'enabled'
             }
           ]
@@ -976,4 +976,97 @@ export function manageMonitoredChannelsModal(channels) {
     close: { type: 'plain_text', text: 'Close' },
     blocks
   };
+}
+
+export function editMonitoredChannelModal(channel) {
+  const responseTypeLabels = {
+    analytical: 'Analytical',
+    summary: 'Summary', 
+    questions: 'Questions',
+    insights: 'Insights'
+  };
+
+  return {
+    type: 'modal',
+    callback_id: 'edit_monitored_channel',
+    title: { type: 'plain_text', text: 'Edit Channel' },
+    submit: { type: 'plain_text', text: 'Save Changes' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    private_metadata: JSON.stringify({ channelId: channel.channelId }),
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `✏️ *Edit Settings for #${channel.channelName}*`
+        }
+      },
+      {
+        type: 'input',
+        block_id: 'response_type',
+        label: { type: 'plain_text', text: 'Response Type' },
+        element: {
+          type: 'static_select',
+          action_id: 'response_type_input',
+          placeholder: { type: 'plain_text', text: 'Choose response type...' },
+          initial_option: {
+            text: { type: 'plain_text', text: `${responseTypeLabels[channel.responseType]} - ${getResponseTypeDescription(channel.responseType)}` },
+            value: channel.responseType
+          },
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Analytical - Analyze messages for insights and patterns' },
+              value: 'analytical'
+            },
+            {
+              text: { type: 'plain_text', text: 'Summary - Provide concise summaries of activity' },
+              value: 'summary'
+            },
+            {
+              text: { type: 'plain_text', text: 'Questions - Ask clarifying questions to facilitate discussion' },
+              value: 'questions'
+            },
+            {
+              text: { type: 'plain_text', text: 'Insights - Share observations and actionable insights' },
+              value: 'insights'
+            }
+          ]
+        },
+        hint: { type: 'plain_text', text: 'How should the bot respond to messages in this channel?' }
+      },
+      {
+        type: 'input',
+        block_id: 'auto_jira_tickets',
+        label: { type: 'plain_text', text: 'Auto-Create Jira Tickets' },
+        element: {
+          type: 'checkboxes',
+          action_id: 'auto_jira_input',
+          initial_options: channel.autoCreateJiraTickets ? [
+            {
+              text: { type: 'plain_text', text: 'Create Jira ticket after 1st bot response in thread' },
+              value: 'enabled'
+            }
+          ] : [],
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Create Jira ticket after 1st bot response in thread' },
+              value: 'enabled'
+            }
+          ]
+        },
+        hint: { type: 'plain_text', text: 'Automatically creates a Jira ticket to track ongoing discussions' },
+        optional: true
+      }
+    ]
+  };
+}
+
+function getResponseTypeDescription(responseType) {
+  const descriptions = {
+    analytical: 'Analyze messages for insights and patterns',
+    summary: 'Provide concise summaries of activity',
+    questions: 'Ask clarifying questions to facilitate discussion',
+    insights: 'Share observations and actionable insights'
+  };
+  return descriptions[responseType] || 'Unknown response type';
 }

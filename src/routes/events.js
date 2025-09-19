@@ -569,8 +569,8 @@ app.event('*', async ({ event, client, context }) => {
           responseCount 
         });
         
-        if (responseCount === 2) {
-          logger.info('Creating auto Jira ticket after 2nd bot response:', { team, channel, threadTs: message.ts });
+        if (responseCount === 1) {
+          logger.info('Creating auto Jira ticket after 1st bot response:', { team, channel, threadTs: message.ts });
           
           try {
             // Get recent messages for context
@@ -588,7 +588,7 @@ app.event('*', async ({ event, client, context }) => {
 Thread started by: ${userText}
 Response Type: ${monitoredChannel.responseType}
 
-This ticket was automatically created after the bot's 2nd response in the thread to track ongoing discussion and ensure follow-up.`;
+This ticket was automatically created after the bot's 1st response in the thread to track ongoing discussion and ensure follow-up.`;
 
             // Extract ticket information and create it
             const ticketData = extractTicketFromContext(ticketDescription, recentMessages);
