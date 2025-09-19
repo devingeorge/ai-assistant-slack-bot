@@ -170,6 +170,38 @@ export function homeView(isAdmin = false, jiraConfig = null, agentSettings = nul
     ]
   });
 
+  // Add Monitored Channels section
+  blocks.push({ type: 'divider' });
+  blocks.push({
+    type: 'header',
+    text: { type: 'plain_text', text: '📡 Auto-Response Channels', emoji: true }
+  });
+  blocks.push({
+    type: 'section',
+    text: {
+      type: 'mrkdwn',
+      text: '*Channel Auto-Monitoring*\nMonitor up to 5 channels for automatic thread responses. Bot will analyze messages and respond in threads based on your selected response type.'
+    }
+  });
+  
+  // Monitored channels action buttons
+  blocks.push({
+    type: 'actions',
+    elements: [
+      {
+        type: 'button',
+        action_id: 'add_monitored_channel',
+        text: { type: 'plain_text', text: '➕ Add Channel' },
+        style: 'primary'
+      },
+      {
+        type: 'button',
+        action_id: 'manage_monitored_channels',
+        text: { type: 'plain_text', text: '📝 Manage Channels' }
+      }
+    ]
+  });
+
   // Add Dynamic Action Triggers section
   blocks.push({ type: 'divider' });
   blocks.push({
@@ -798,5 +830,131 @@ export function jiraSetupModal(existingConfig = null) {
         optional: true
       }
     ]
+  };
+}
+
+export function addMonitoredChannelModal() {
+  return {
+    type: 'modal',
+    callback_id: 'add_monitored_channel',
+    title: { type: 'plain_text', text: 'Add Monitored Channel' },
+    submit: { type: 'plain_text', text: 'Add Channel' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '📡 *Add Channel for Auto-Monitoring*\nThe bot will automatically respond to messages in this channel via thread replies.'
+        }
+      },
+      {
+        type: 'input',
+        block_id: 'channel_select',
+        label: { type: 'plain_text', text: 'Select Channel' },
+        element: {
+          type: 'channels_select',
+          action_id: 'channel_input',
+          placeholder: { type: 'plain_text', text: 'Choose a channel to monitor...' }
+        },
+        hint: { type: 'plain_text', text: 'Select the channel where you want auto-responses' }
+      },
+      {
+        type: 'input',
+        block_id: 'response_type',
+        label: { type: 'plain_text', text: 'Response Type' },
+        element: {
+          type: 'static_select',
+          action_id: 'response_type_input',
+          placeholder: { type: 'plain_text', text: 'Choose response type...' },
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Analytical - Analyze messages for insights and patterns' },
+              value: 'analytical'
+            },
+            {
+              text: { type: 'plain_text', text: 'Summary - Provide concise summaries of activity' },
+              value: 'summary'
+            },
+            {
+              text: { type: 'plain_text', text: 'Questions - Ask clarifying questions to facilitate discussion' },
+              value: 'questions'
+            },
+            {
+              text: { type: 'plain_text', text: 'Insights - Share observations and actionable insights' },
+              value: 'insights'
+            }
+          ]
+        },
+        hint: { type: 'plain_text', text: 'How should the bot respond to messages in this channel?' }
+      }
+    ]
+  };
+}
+
+export function manageMonitoredChannelsModal(channels) {
+  const blocks = [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '📡 *Manage Monitored Channels*\nEdit, enable/disable, or remove auto-response channels.'
+      }
+    }
+  ];
+
+  if (channels.length === 0) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: 'No channels are being monitored yet.'
+      }
+    });
+  } else {
+    channels.forEach(channel => {
+      const statusEmoji = channel.enabled ? '✅' : '❌';
+      const statusText = channel.enabled ? 'Enabled' : 'Disabled';
+      const responseTypeLabels = {
+        analytical: 'Analytical',
+        summary: 'Summary', 
+        questions: 'Questions',
+        insights: 'Insights'
+      };
+      
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `${statusEmoji} *#${channel.channelName}*\nResponse Type: ${responseTypeLabels[channel.responseType] || channel.responseType}\n_${statusText}_`
+        },
+        accessory: {
+          type: 'overflow',
+          options: [
+            {
+              text: { type: 'plain_text', text: '✏️ Edit Settings' },
+              value: `edit_${channel.channelId}`
+            },
+            {
+              text: { type: 'plain_text', text: channel.enabled ? '🔴 Disable' : '🟢 Enable' },
+              value: `toggle_${channel.channelId}`
+            },
+            {
+              text: { type: 'plain_text', text: '🗑️ Remove' },
+              value: `remove_${channel.channelId}`
+            }
+          ],
+          action_id: `monitored_channel_actions_${channel.channelId}`
+        }
+      });
+    });
+  }
+
+  return {
+    type: 'modal',
+    callback_id: 'manage_monitored_channels',
+    title: { type: 'plain_text', text: 'Manage Monitored Channels' },
+    close: { type: 'plain_text', text: 'Close' },
+    blocks
   };
 }

@@ -17,11 +17,12 @@ import { logger } from '../lib/logger.js';
 import { stopBlocks, homeView } from '../ui/views.js';
 import { formatResponseAsBlocks, formatSimpleTextAsBlocks } from '../services/blockKitFormatter.js';
 import { getLLMStream } from '../services/llm.js';
-import { assistantSearchContext, formatResultsAsBullets } from '../services/dataAccess.js';
+import { assistantSearchContext, formatResultsAsBullets, getRecentMessages } from '../services/dataAccess.js';
 import { detectIntent } from '../services/intent.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 import { findMatchingTrigger } from '../services/triggers.js';
 import { getSuggestedPromptButtons, getSuggestedPromptsForAPI } from '../services/assistantPanel.js';
+import { isChannelMonitored } from '../services/channelMonitoring.js';
 import { Assistant } from '@slack/bolt';
 
 /** Resolve the channel the user is viewing in the Assistant panel (if present). */
@@ -462,6 +463,97 @@ app.event('*', async ({ event, client, context }) => {
       stopAction: 'stop_generation', // Enable stop button in the actual response
       useBlockKit: true // Use Block Kit for channel responses
     });
+  });
+
+  // Channel messages — check for monitored channels
+  app.message(async ({ message, event, client, context }) => {
+    if (message.subtype || !message.text) return;
+    if (event.channel_type !== 'channel') return;
+
+    try {
+      const team = context.teamId || event.team;
+      const channel = event.channel;
+      const user = message.user;
+      const userText = String(message.text || '').slice(0, config.limits?.maxUserChars ?? 4000);
+
+      // Check if this channel is being monitored
+      const monitoredChannel = await isChannelMonitored(team, channel);
+      if (!monitoredChannel) {
+        return; // Channel is not being monitored
+      }
+
+      logger.info('Processing message in monitored channel:', { 
+        team, 
+        channel, 
+        user, 
+        responseType: monitoredChannel.responseType 
+      });
+
+      // Get user's agent settings
+      const agentSettings = await getAgentSettings(team, user);
+      
+      // Build system prompt based on response type
+      let systemPrompt;
+      switch (monitoredChannel.responseType) {
+        case 'analytical':
+          systemPrompt = `You are an analytical assistant monitoring this channel. Analyze the recent message for insights, patterns, and key points. Provide thoughtful analysis in a thread reply. Keep responses concise and focused on actionable insights.`;
+          break;
+        case 'summary':
+          systemPrompt = `You are a summarization assistant monitoring this channel. Provide a concise summary of the recent message and its context. Keep summaries brief and highlight key points.`;
+          break;
+        case 'questions':
+          systemPrompt = `You are a facilitation assistant monitoring this channel. Ask thoughtful, clarifying questions about the recent message to help facilitate better discussion. Focus on questions that add value and encourage deeper thinking.`;
+          break;
+        case 'insights':
+          systemPrompt = `You are an insights assistant monitoring this channel. Share observations and actionable insights about the recent message. Focus on practical takeaways and next steps.`;
+          break;
+        default:
+          systemPrompt = `You are monitoring this channel and responding to messages. Provide a helpful response based on the recent message.`;
+      }
+
+      // Get recent context for better responses
+      const key = convoKey({ team, channel, thread: null, user });
+      await store.addUserTurn(key, userText);
+
+      // Get recent messages for context
+      let recentMessages = [];
+      try {
+        const hist = await getRecentMessages(client, channel, { limit: 10 });
+        if (hist.ok && hist.messages.length) {
+          recentMessages = hist.messages;
+        }
+      } catch {}
+
+      // Build context from recent messages
+      const contextText = recentMessages.length > 0 
+        ? recentMessages.slice(-5).map(m => `${m.user}: ${m.text}`).join('\n')
+        : userText;
+
+      const system = buildSystemPrompt({
+        surface: 'channel',
+        channelContextText: contextText,
+        docContext: '',
+        userMessage: userText,
+        agentSettings
+      }) + '\n\n' + systemPrompt;
+
+      const history = await store.history(key);
+      const llmStream = getLLMStream();
+      const iter = llmStream({ messages: history, system });
+
+      // Respond in thread to keep main channel clean
+      await streamToSlack({
+        client,
+        channel,
+        thread_ts: message.ts, // Reply in thread
+        iter,
+        initialText: null,
+        useBlockKit: false // Use simple text for thread responses
+      });
+
+    } catch (error) {
+      logger.error('Error processing monitored channel message:', error);
+    }
   });
 
   // Assistant pane / DMs — detect conversational intents; no Stop button here

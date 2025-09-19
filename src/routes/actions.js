@@ -11,7 +11,9 @@ import {
   importTemplatesModal,
   agentSettingsModal,
   addSuggestedPromptModal,
-  manageSuggestedPromptsModal
+  manageSuggestedPromptsModal,
+  addMonitoredChannelModal,
+  manageMonitoredChannelsModal
 } from '../ui/views.js';
 import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/jira.js';
 import { 
@@ -35,6 +37,12 @@ import {
   toggleSuggestedPrompt,
   getSuggestedPromptById
 } from '../services/suggestedPrompts.js';
+import { 
+  addMonitoredChannel,
+  getMonitoredChannels,
+  updateMonitoredChannel,
+  removeMonitoredChannel
+} from '../services/channelMonitoring.js';
 import { store } from '../services/store.js';
 
 export function registerActions(app) {
@@ -906,4 +914,178 @@ export function registerActions(app) {
 
   // Note: Suggested prompt button clicks are now handled by Slack's native assistant panel
   // No custom action handler needed - Slack handles the button clicks and sends the prompt value as a message
+
+  // ===== MONITORED CHANNELS ACTIONS =====
+
+  // Add Monitored Channel button
+  app.action('add_monitored_channel', async ({ ack, body, client }) => {
+    await ack();
+    
+    try {
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: addMonitoredChannelModal()
+      });
+    } catch (error) {
+      console.error('Add monitored channel modal error:', error);
+    }
+  });
+
+  // Manage Monitored Channels button
+  app.action('manage_monitored_channels', async ({ ack, body, client, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const channels = await getMonitoredChannels(teamId);
+      
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: manageMonitoredChannelsModal(channels)
+      });
+    } catch (error) {
+      console.error('Manage monitored channels modal error:', error);
+    }
+  });
+
+  // Monitored Channel overflow menu actions
+  app.action(/^monitored_channel_actions_(.+)$/, async ({ ack, body, client, context, action }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const selectedValue = action.selected_option?.value;
+      if (!selectedValue) return;
+      
+      // Parse selected value: format is "actionType_channelId"
+      const firstUnderscore = selectedValue.indexOf('_');
+      const actionType = selectedValue.substring(0, firstUnderscore);
+      const targetId = selectedValue.substring(firstUnderscore + 1);
+      
+      switch (actionType) {
+        case 'edit':
+          // TODO: Implement edit functionality
+          await client.chat.postEphemeral({
+            channel: userId,
+            user: userId,
+            text: '✏️ Edit functionality coming soon!'
+          });
+          break;
+          
+        case 'toggle':
+          const channels = await getMonitoredChannels(teamId);
+          const channel = channels.find(c => c.channelId === targetId);
+          if (channel) {
+            const result = await updateMonitoredChannel(teamId, targetId, { 
+              enabled: !channel.enabled 
+            });
+            if (result.success) {
+              const status = result.channel.enabled ? 'enabled' : 'disabled';
+              await client.chat.postEphemeral({
+                channel: userId,
+                user: userId,
+                text: `✅ Channel monitoring ${status} successfully!`
+              });
+              
+              // Refresh the modal
+              const updatedChannels = await getMonitoredChannels(teamId);
+              await client.views.update({
+                view_id: body.view?.id,
+                view: manageMonitoredChannelsModal(updatedChannels)
+              });
+            }
+          }
+          break;
+          
+        case 'remove':
+          const deleteResult = await removeMonitoredChannel(teamId, targetId);
+          if (deleteResult.success) {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: '✅ Channel removed from monitoring successfully!'
+            });
+            
+            // Refresh the modal
+            const updatedChannels = await getMonitoredChannels(teamId);
+            await client.views.update({
+              view_id: body.view?.id,
+              view: manageMonitoredChannelsModal(updatedChannels)
+            });
+          } else {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: `❌ Failed to remove channel: ${deleteResult.error}`
+            });
+          }
+          break;
+      }
+    } catch (error) {
+      console.error('Monitored channel action error:', error);
+    }
+  });
+
+  // Add Monitored Channel modal submission
+  app.view('add_monitored_channel', async ({ ack, body, client, view, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const values = view.state.values;
+      const channelId = values.channel_select?.channel_input?.selected_channel;
+      const responseType = values.response_type?.response_type_input?.selected_option?.value;
+      
+      if (!channelId || !responseType) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '❌ Please select both a channel and response type'
+        });
+        return;
+      }
+      
+      // Get channel info to get the name
+      const channelInfo = await client.conversations.info({ channel: channelId });
+      const channelName = channelInfo.channel?.name || 'Unknown Channel';
+      
+      const result = await addMonitoredChannel(teamId, {
+        channelId,
+        channelName,
+        responseType,
+        enabled: true,
+        addedBy: userId
+      });
+      
+      if (result.success) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `✅ Channel #${channelName} added to monitoring successfully!\nResponse Type: ${responseType}`
+        });
+        
+        // Refresh App Home
+        const userInfo = await client.users.info({ user: userId });
+        const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
+        const jiraConfig = await getJiraConfig(teamId);
+        const agentSettings = await getAgentSettings(teamId, userId);
+        await client.views.publish({
+          user_id: userId,
+          view: homeView(isAdmin, jiraConfig, agentSettings)
+        });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to add channel: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Monitored channel submission error:', error);
+    }
+  });
 }
