@@ -56,12 +56,12 @@ async function handleCanvasCreation(client, teamId, userId, channelId, userMessa
       );
       
       if (canvasResult.success) {
-        logger.info('Canvas created successfully:', { canvasId: canvasResult.canvas?.canvas_id });
+        logger.info('Canvas created successfully:', { canvasId: canvasResult.canvasId });
         
         // Post a message with the canvas link
         await client.chat.postMessage({
           channel: channelId,
-          text: `📄 *Canvas Created Successfully!*\n\n<${canvasResult.url}|View Canvas: ${title}>`
+          text: `📄 *Canvas Created Successfully!*\n\n<${canvasResult.url}|View Canvas: ${title}>\n\nCanvas ID: \`${canvasResult.canvasId}\``
         });
         
         return canvasResult;

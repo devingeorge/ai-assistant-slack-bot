@@ -66,7 +66,7 @@ export async function createCanvasFromResponse(client, channelId, content, title
         success: true,
         canvas: result.canvas,
         canvasId: canvasId,
-        url: result.canvas?.url
+        url: result.canvas?.url || `https://slack.com/canvas/${canvasId}`
       };
     } else {
       logger.error('Failed to create canvas:', result.error);
@@ -260,7 +260,7 @@ export async function createSimpleCanvas(client, channelId, text, title = 'AI Re
         success: true,
         canvas: result.canvas,
         canvasId: canvasId,
-        url: result.canvas?.url
+        url: result.canvas?.url || `https://slack.com/canvas/${canvasId}`
       };
     } else {
       return {
