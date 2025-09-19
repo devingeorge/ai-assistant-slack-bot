@@ -14,7 +14,10 @@ import {
   manageSuggestedPromptsModal,
   addMonitoredChannelModal,
   manageMonitoredChannelsModal,
-  editMonitoredChannelModal
+  editMonitoredChannelModal,
+  addKnowledgeUrlModal,
+  manageKnowledgeUrlsModal,
+  editKnowledgeUrlModal
 } from '../ui/views.js';
 import { getJiraConfig, saveJiraConfig, testJiraConnection } from '../services/jira.js';
 import { 
@@ -44,6 +47,13 @@ import {
   updateMonitoredChannel,
   removeMonitoredChannel
 } from '../services/channelMonitoring.js';
+import { 
+  addUserUrl,
+  getUserUrls,
+  updateUserUrl,
+  removeUserUrl,
+  clearAllUserUrls
+} from '../services/urlKnowledge.js';
 import { store } from '../services/store.js';
 
 export function registerActions(app) {
@@ -1138,6 +1148,252 @@ export function registerActions(app) {
       }
     } catch (error) {
       console.error('Edit monitored channel submission error:', error);
+    }
+  });
+
+  // ===== KNOWLEDGE URL ACTIONS =====
+
+  // Add Knowledge URL button
+  app.action('add_knowledge_url', async ({ ack, body, client }) => {
+    await ack();
+    
+    try {
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: addKnowledgeUrlModal()
+      });
+    } catch (error) {
+      console.error('Add knowledge URL modal error:', error);
+    }
+  });
+
+  // Manage Knowledge URLs button
+  app.action('manage_knowledge_urls', async ({ ack, body, client, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      const urls = await getUserUrls(teamId, userId);
+      
+      await client.views.open({
+        trigger_id: body.trigger_id,
+        view: manageKnowledgeUrlsModal(urls)
+      });
+    } catch (error) {
+      console.error('Manage knowledge URLs modal error:', error);
+    }
+  });
+
+  // Knowledge URL overflow menu actions
+  app.action(/^knowledge_url_actions_(.+)$/, async ({ ack, body, client, context, action }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const selectedValue = action.selected_option?.value;
+      if (!selectedValue) return;
+      
+      // Parse selected value: format is "actionType_urlId"
+      const firstUnderscore = selectedValue.indexOf('_');
+      const actionType = selectedValue.substring(0, firstUnderscore);
+      const targetId = selectedValue.substring(firstUnderscore + 1);
+      
+      switch (actionType) {
+        case 'edit':
+          const urls = await getUserUrls(teamId, userId);
+          const urlToEdit = urls.find(u => u.id === targetId);
+          if (urlToEdit) {
+            await client.views.open({
+              trigger_id: body.trigger_id,
+              view: editKnowledgeUrlModal(urlToEdit)
+            });
+          }
+          break;
+          
+        case 'toggle':
+          const toggleUrls = await getUserUrls(teamId, userId);
+          const toggleUrl = toggleUrls.find(u => u.id === targetId);
+          if (toggleUrl) {
+            const result = await updateUserUrl(teamId, userId, targetId, { 
+              enabled: !toggleUrl.enabled 
+            });
+            if (result.success) {
+              const status = result.url.enabled ? 'enabled' : 'disabled';
+              await client.chat.postEphemeral({
+                channel: userId,
+                user: userId,
+                text: `✅ URL ${status} successfully!`
+              });
+              
+              // Refresh the modal
+              const updatedUrls = await getUserUrls(teamId, userId);
+              await client.views.update({
+                view_id: body.view?.id,
+                view: manageKnowledgeUrlsModal(updatedUrls)
+              });
+            }
+          }
+          break;
+          
+        case 'remove':
+          const deleteResult = await removeUserUrl(teamId, userId, targetId);
+          if (deleteResult.success) {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: '✅ URL removed from knowledge base successfully!'
+            });
+            
+            // Refresh the modal
+            const updatedUrls = await getUserUrls(teamId, userId);
+            await client.views.update({
+              view_id: body.view?.id,
+              view: manageKnowledgeUrlsModal(updatedUrls)
+            });
+          } else {
+            await client.chat.postEphemeral({
+              channel: userId,
+              user: userId,
+              text: `❌ Failed to remove URL: ${deleteResult.error}`
+            });
+          }
+          break;
+      }
+    } catch (error) {
+      console.error('Knowledge URL action error:', error);
+    }
+  });
+
+  // Clear All Knowledge URLs button
+  app.action('clear_all_knowledge_urls', async ({ ack, body, client, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const result = await clearAllUserUrls(teamId, userId);
+      if (result.success) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '✅ All URLs cleared from knowledge base successfully!'
+        });
+        
+        // Refresh the modal
+        const updatedUrls = await getUserUrls(teamId, userId);
+        await client.views.update({
+          view_id: body.view?.id,
+          view: manageKnowledgeUrlsModal(updatedUrls)
+        });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to clear URLs: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Clear all knowledge URLs error:', error);
+    }
+  });
+
+  // Add Knowledge URL modal submission
+  app.view('add_knowledge_url', async ({ ack, body, client, view, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const values = view.state.values;
+      const url = values.url_input?.url_field?.value;
+      const title = values.title_input?.title_field?.value;
+      const description = values.description_input?.description_field?.value;
+      
+      if (!url) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '❌ Please enter a URL'
+        });
+        return;
+      }
+      
+      const result = await addUserUrl(teamId, userId, {
+        url,
+        title: title || url,
+        description: description || ''
+      });
+      
+      if (result.success) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `✅ URL added to knowledge base successfully!\nTitle: ${result.url.title}\nURL: ${result.url.url}`
+        });
+        
+        // TODO: Trigger URL crawling in background
+        logger.info('URL added, should trigger crawling:', { teamId, userId, url: result.url.url });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to add URL: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Knowledge URL submission error:', error);
+    }
+  });
+
+  // Edit Knowledge URL modal submission
+  app.view('edit_knowledge_url', async ({ ack, body, client, view, context }) => {
+    await ack();
+    
+    try {
+      const teamId = context.teamId || body.team?.id;
+      const userId = body.user?.id;
+      
+      const metadata = JSON.parse(view.private_metadata);
+      const urlId = metadata.urlId;
+      
+      const values = view.state.values;
+      const title = values.title_input?.title_field?.value;
+      const description = values.description_input?.description_field?.value;
+      
+      if (!title) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: '❌ Please enter a title'
+        });
+        return;
+      }
+      
+      const result = await updateUserUrl(teamId, userId, urlId, {
+        title,
+        description: description || ''
+      });
+      
+      if (result.success) {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `✅ URL updated successfully!\nTitle: ${result.url.title}`
+        });
+      } else {
+        await client.chat.postEphemeral({
+          channel: userId,
+          user: userId,
+          text: `❌ Failed to update URL: ${result.error}`
+        });
+      }
+    } catch (error) {
+      console.error('Edit knowledge URL submission error:', error);
     }
   });
 }

@@ -202,6 +202,38 @@ export function homeView(isAdmin = false, jiraConfig = null, agentSettings = nul
     ]
   });
 
+  // Add Knowledge Sources section
+  blocks.push({ type: 'divider' });
+  blocks.push({
+    type: 'header',
+    text: { type: 'plain_text', text: '📚 Knowledge Sources', emoji: true }
+  });
+  blocks.push({
+    type: 'section',
+    text: {
+      type: 'mrkdwn',
+      text: '*URL Knowledge Base*\nAdd URLs that the AI can crawl and use to answer your questions. Content is indexed and made searchable through RAG.'
+    }
+  });
+  
+  // Knowledge sources action buttons
+  blocks.push({
+    type: 'actions',
+    elements: [
+      {
+        type: 'button',
+        action_id: 'add_knowledge_url',
+        text: { type: 'plain_text', text: '➕ Add URL' },
+        style: 'primary'
+      },
+      {
+        type: 'button',
+        action_id: 'manage_knowledge_urls',
+        text: { type: 'plain_text', text: '📝 Manage URLs' }
+      }
+    ]
+  });
+
   // Add Dynamic Action Triggers section
   blocks.push({ type: 'divider' });
   blocks.push({
@@ -1069,4 +1101,193 @@ function getResponseTypeDescription(responseType) {
     insights: 'Share observations and actionable insights'
   };
   return descriptions[responseType] || 'Unknown response type';
+}
+
+export function addKnowledgeUrlModal() {
+  return {
+    type: 'modal',
+    callback_id: 'add_knowledge_url',
+    title: { type: 'plain_text', text: 'Add Knowledge URL' },
+    submit: { type: 'plain_text', text: 'Add URL' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '📚 *Add URL to Knowledge Base*\nThe AI will crawl this URL and make its content available for answering questions.'
+        }
+      },
+      {
+        type: 'input',
+        block_id: 'url_input',
+        label: { type: 'plain_text', text: 'URL' },
+        element: {
+          type: 'url_text_input',
+          action_id: 'url_field',
+          placeholder: { type: 'plain_text', text: 'https://example.com/documentation' }
+        },
+        hint: { type: 'plain_text', text: 'Enter the URL you want to add to your knowledge base' }
+      },
+      {
+        type: 'input',
+        block_id: 'title_input',
+        label: { type: 'plain_text', text: 'Title (Optional)' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'title_field',
+          placeholder: { type: 'plain_text', text: 'Custom title for this URL' },
+          max_length: 100
+        },
+        hint: { type: 'plain_text', text: 'Give this URL a custom title (defaults to URL if empty)' },
+        optional: true
+      },
+      {
+        type: 'input',
+        block_id: 'description_input',
+        label: { type: 'plain_text', text: 'Description (Optional)' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'description_field',
+          placeholder: { type: 'plain_text', text: 'Brief description of what this URL contains' },
+          max_length: 200,
+          multiline: true
+        },
+        hint: { type: 'plain_text', text: 'Describe what content this URL contains' },
+        optional: true
+      }
+    ]
+  };
+}
+
+export function manageKnowledgeUrlsModal(urls) {
+  const blocks = [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '📚 *Manage Knowledge Sources*\nEdit, enable/disable, or remove URLs from your knowledge base.'
+      }
+    }
+  ];
+
+  if (urls.length === 0) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: 'No URLs added to your knowledge base yet.'
+      }
+    });
+  } else {
+    urls.forEach(url => {
+      const statusEmoji = url.enabled ? '✅' : '❌';
+      const statusText = url.enabled ? 'Enabled' : 'Disabled';
+      const crawlStatusEmoji = {
+        pending: '⏳',
+        crawling: '🔄',
+        completed: '✅',
+        failed: '❌'
+      }[url.crawlStatus] || '❓';
+      
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `${statusEmoji} *${url.title}*\n${url.description ? url.description + '\n' : ''}<${url.url}|View URL>\n${crawlStatusEmoji} Crawl: ${url.crawlStatus}\n_${statusText}_`
+        },
+        accessory: {
+          type: 'overflow',
+          options: [
+            {
+              text: { type: 'plain_text', text: '✏️ Edit' },
+              value: `edit_${url.id}`
+            },
+            {
+              text: { type: 'plain_text', text: url.enabled ? '🔴 Disable' : '🟢 Enable' },
+              value: `toggle_${url.id}`
+            },
+            {
+              text: { type: 'plain_text', text: '🗑️ Remove' },
+              value: `remove_${url.id}`
+            }
+          ],
+          action_id: `knowledge_url_actions_${url.id}`
+        }
+      });
+    });
+
+    // Add clear all button if there are URLs
+    blocks.push({
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          action_id: 'clear_all_knowledge_urls',
+          text: { type: 'plain_text', text: '🗑️ Clear All URLs' },
+          style: 'danger',
+          confirm: {
+            title: { type: 'plain_text', text: 'Clear All URLs' },
+            text: { type: 'plain_text', text: 'Are you sure you want to remove all URLs from your knowledge base? This action cannot be undone.' },
+            confirm: { type: 'plain_text', text: 'Yes, Clear All' },
+            deny: { type: 'plain_text', text: 'Cancel' }
+          }
+        }
+      ]
+    });
+  }
+
+  return {
+    type: 'modal',
+    callback_id: 'manage_knowledge_urls',
+    title: { type: 'plain_text', text: 'Manage URLs' },
+    close: { type: 'plain_text', text: 'Close' },
+    blocks
+  };
+}
+
+export function editKnowledgeUrlModal(url) {
+  return {
+    type: 'modal',
+    callback_id: 'edit_knowledge_url',
+    title: { type: 'plain_text', text: 'Edit URL' },
+    submit: { type: 'plain_text', text: 'Save Changes' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    private_metadata: JSON.stringify({ urlId: url.id }),
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `✏️ *Edit Knowledge Source*\n<${url.url}|${url.title}>`
+        }
+      },
+      {
+        type: 'input',
+        block_id: 'title_input',
+        label: { type: 'plain_text', text: 'Title' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'title_field',
+          placeholder: { type: 'plain_text', text: 'Custom title for this URL' },
+          initial_value: url.title,
+          max_length: 100
+        }
+      },
+      {
+        type: 'input',
+        block_id: 'description_input',
+        label: { type: 'plain_text', text: 'Description' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'description_field',
+          placeholder: { type: 'plain_text', text: 'Brief description of what this URL contains' },
+          initial_value: url.description || '',
+          max_length: 200,
+          multiline: true
+        },
+        optional: true
+      }
+    ]
+  };
 }
