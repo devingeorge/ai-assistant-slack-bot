@@ -23,23 +23,36 @@ import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../se
 import { findMatchingTrigger } from '../services/triggers.js';
 import { getSuggestedPromptButtons, getSuggestedPromptsForAPI } from '../services/assistantPanel.js';
 import { isChannelMonitored, incrementThreadResponseCount } from '../services/channelMonitoring.js';
-import { createCanvasFromResponse } from '../services/canvas.js';
+import { createCanvasFromResponse, isCanvasCreationRequest, extractCanvasContent } from '../services/canvas.js';
 import { Assistant } from '@slack/bolt';
 
-/** Helper function to create Canvas if auto-create is enabled */
-async function createCanvasIfEnabled(client, teamId, userId, channelId, responseContent, userQuery, agentSettings) {
+/** Helper function to handle Canvas creation requests */
+async function handleCanvasCreation(client, teamId, userId, channelId, userMessage, agentSettings) {
   try {
-    if (agentSettings?.autoCreateCanvas && responseContent && responseContent.trim().length > 50) {
-      logger.info('Auto-creating Canvas for response:', { teamId, userId, channelId, contentLength: responseContent.length });
+    // Check if user has Canvas creation enabled and is requesting it
+    if (agentSettings?.autoCreateCanvas && isCanvasCreationRequest(userMessage)) {
+      logger.info('User requesting Canvas creation:', { teamId, userId, channelId, message: userMessage });
       
-      const title = userQuery ? `Response: ${userQuery.substring(0, 50)}${userQuery.length > 50 ? '...' : ''}` : 'AI Response';
+      const canvasContent = extractCanvasContent(userMessage);
+      
+      if (!canvasContent || canvasContent.length < 3) {
+        await client.chat.postMessage({
+          channel: channelId,
+          text: '⚠️ Please provide content for the Canvas.\nExample: "create canvas for my meeting notes about the project update"'
+        });
+        return null;
+      }
+      
+      const title = canvasContent.length > 50 ? 
+        `${canvasContent.substring(0, 50)}...` : 
+        canvasContent;
       
       const canvasResult = await createCanvasFromResponse(
         client,
         channelId,
-        responseContent,
+        canvasContent,
         title,
-        userQuery
+        userMessage
       );
       
       if (canvasResult.success) {
@@ -48,16 +61,24 @@ async function createCanvasIfEnabled(client, teamId, userId, channelId, response
         // Post a message with the canvas link
         await client.chat.postMessage({
           channel: channelId,
-          text: `📄 *Canvas Created*\nI've created a Canvas document with this response for easy reference and sharing.`
+          text: `📄 *Canvas Created Successfully!*\n\n<${canvasResult.url}|View Canvas: ${title}>`
         });
         
         return canvasResult;
       } else {
         logger.error('Failed to create Canvas:', canvasResult.error);
+        await client.chat.postMessage({
+          channel: channelId,
+          text: `❌ Failed to create Canvas: ${canvasResult.error}`
+        });
       }
     }
   } catch (error) {
-    logger.error('Error creating Canvas:', error);
+    logger.error('Error handling Canvas creation:', error);
+    await client.chat.postMessage({
+      channel: channelId,
+      text: `❌ Error creating Canvas: ${error.message}`
+    });
   }
   return null;
 }
@@ -329,6 +350,15 @@ app.event('*', async ({ event, client, context }) => {
     const channel = event.channel;
     const user = event.user;
     const prompt = (event.text || '').replace(/<@[^>]+>\s*/, '').trim().slice(0, config.limits?.maxUserChars ?? 4000);
+
+    // Check for Canvas creation requests first
+    const userAgentSettings = await getAgentSettings(team, user);
+    if (isCanvasCreationRequest(prompt)) {
+      const canvasResult = await handleCanvasCreation(client, team, user, channel, prompt, userAgentSettings);
+      if (canvasResult) {
+        return; // Canvas was created, don't process further
+      }
+    }
 
     // Check if this is a ticket creation request
     const isTicketRequest = isTicketCreationRequest(prompt);
@@ -704,7 +734,16 @@ app.event('*', async ({ event, client, context }) => {
       }
     }
 
-    // Check for Jira ticket creation requests first
+    // Check for Canvas creation requests first
+    const userAgentSettings = await getAgentSettings(team, user);
+    if (isCanvasCreationRequest(userText)) {
+      const canvasResult = await handleCanvasCreation(client, team, user, channel, userText, userAgentSettings);
+      if (canvasResult) {
+        return; // Canvas was created, don't process further
+      }
+    }
+
+    // Check for Jira ticket creation requests
     logger.info('Checking ticket creation request:', { userText, isTicketRequest: isTicketCreationRequest(userText) });
     if (isTicketCreationRequest(userText)) {
       try {
