@@ -33,7 +33,7 @@ const receiver = new ExpressReceiver({
   signingSecret: config.slack.signingSecret || 'placeholder',
   clientId: config.slack.clientId || 'placeholder',
   clientSecret: config.slack.clientSecret || 'placeholder',
-  stateSecret: config.slack.stateSecret || 'fallback-secret',
+  stateSecret: config.slack.stateSecret,
   endpoints: {
     events: '/slack/events',
     interactive: '/slack/interactive',
