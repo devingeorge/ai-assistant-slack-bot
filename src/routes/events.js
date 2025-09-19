@@ -17,7 +17,7 @@ import { logger } from '../lib/logger.js';
 import { stopBlocks, homeView } from '../ui/views.js';
 import { formatResponseAsBlocks, formatSimpleTextAsBlocks } from '../services/blockKitFormatter.js';
 import { getLLMStream } from '../services/llm.js';
-import { assistantSearchContext, formatResultsAsBullets, getRecentMessages } from '../services/dataAccess.js';
+import { assistantSearchContext, formatResultsAsBullets } from '../services/dataAccess.js';
 import { detectIntent } from '../services/intent.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 import { findMatchingTrigger } from '../services/triggers.js';
