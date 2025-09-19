@@ -14,7 +14,8 @@ const defaultSettings = {
   specialty: '',
   responseLength: 'balanced',
   languageStyle: 'conversational',
-  customInstructions: ''
+  customInstructions: '',
+  autoCreateCanvas: false
 };
 
 /** Get user's agent settings */

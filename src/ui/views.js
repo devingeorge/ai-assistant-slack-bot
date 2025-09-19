@@ -590,6 +590,29 @@ export function agentSettingsModal(currentSettings = null) {
         },
         hint: { type: 'plain_text', text: 'Additional guidance for the AI behavior' },
         optional: true
+      },
+      {
+        type: 'input',
+        block_id: 'canvas_setting',
+        label: { type: 'plain_text', text: 'Auto-Create Canvas' },
+        element: {
+          type: 'checkboxes',
+          action_id: 'canvas_checkbox',
+          initial_options: currentSettings?.autoCreateCanvas ? [
+            {
+              text: { type: 'plain_text', text: 'Automatically create Slack Canvas for responses' },
+              value: 'enabled'
+            }
+          ] : [],
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Automatically create Slack Canvas for responses' },
+              value: 'enabled'
+            }
+          ]
+        },
+        hint: { type: 'plain_text', text: 'Create rich Canvas documents for AI responses' },
+        optional: true
       }
     ]
   };

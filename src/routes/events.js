@@ -23,7 +23,44 @@ import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../se
 import { findMatchingTrigger } from '../services/triggers.js';
 import { getSuggestedPromptButtons, getSuggestedPromptsForAPI } from '../services/assistantPanel.js';
 import { isChannelMonitored, incrementThreadResponseCount } from '../services/channelMonitoring.js';
+import { createCanvasFromResponse } from '../services/canvas.js';
 import { Assistant } from '@slack/bolt';
+
+/** Helper function to create Canvas if auto-create is enabled */
+async function createCanvasIfEnabled(client, teamId, userId, channelId, responseContent, userQuery, agentSettings) {
+  try {
+    if (agentSettings?.autoCreateCanvas && responseContent && responseContent.trim().length > 50) {
+      logger.info('Auto-creating Canvas for response:', { teamId, userId, channelId, contentLength: responseContent.length });
+      
+      const title = userQuery ? `Response: ${userQuery.substring(0, 50)}${userQuery.length > 50 ? '...' : ''}` : 'AI Response';
+      
+      const canvasResult = await createCanvasFromResponse(
+        client,
+        channelId,
+        responseContent,
+        title,
+        userQuery
+      );
+      
+      if (canvasResult.success) {
+        logger.info('Canvas created successfully:', { canvasId: canvasResult.canvas?.canvas_id });
+        
+        // Post a message with the canvas link
+        await client.chat.postMessage({
+          channel: channelId,
+          text: `📄 *Canvas Created*\nI've created a Canvas document with this response for easy reference and sharing.`
+        });
+        
+        return canvasResult;
+      } else {
+        logger.error('Failed to create Canvas:', canvasResult.error);
+      }
+    }
+  } catch (error) {
+    logger.error('Error creating Canvas:', error);
+  }
+  return null;
+}
 
 /** Resolve the channel the user is viewing in the Assistant panel (if present). */
 function resolveViewedChannelId(ctx) {

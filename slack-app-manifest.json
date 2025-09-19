@@ -58,7 +58,9 @@
         "search:read.private",
         "search:read.mpim",
         "search:read.im",
-        "search:read.files"
+        "search:read.files",
+        "canvas:write",
+        "canvas:read"
       ]
     }
   },
