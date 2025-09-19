@@ -18,14 +18,31 @@ export async function createCanvasFromResponse(client, channelId, content, title
     const documentContent = formatContentForCanvasDocument(content, title, userQuery);
 
     // Create the canvas using the proper canvases.create API
+    // Try without document_content first to see if the API works
     const result = await client.canvases.create({
       title: title || 'AI Response',
-      document_content: documentContent,
       channel_id: channelId
     });
 
     if (result.ok) {
       logger.info('Canvas created successfully:', { canvasId: result.canvas?.canvas_id });
+      
+      // Try to add content to the canvas using canvases.edit
+      try {
+        const editResult = await client.canvases.edit({
+          canvas_id: result.canvas.canvas_id,
+          document_content: documentContent
+        });
+        
+        if (editResult.ok) {
+          logger.info('Canvas content added successfully');
+        } else {
+          logger.warn('Failed to add content to canvas:', editResult.error);
+        }
+      } catch (editError) {
+        logger.warn('Error adding content to canvas:', editError.message);
+      }
+      
       return {
         success: true,
         canvas: result.canvas,
@@ -198,11 +215,26 @@ export async function createSimpleCanvas(client, channelId, text, title = 'AI Re
   try {
     const result = await client.canvases.create({
       title: title,
-      document_content: documentContent,
       channel_id: channelId
     });
 
     if (result.ok) {
+      // Try to add content to the canvas using canvases.edit
+      try {
+        const editResult = await client.canvases.edit({
+          canvas_id: result.canvas.canvas_id,
+          document_content: documentContent
+        });
+        
+        if (editResult.ok) {
+          logger.info('Canvas content added successfully');
+        } else {
+          logger.warn('Failed to add content to canvas:', editResult.error);
+        }
+      } catch (editError) {
+        logger.warn('Error adding content to canvas:', editError.message);
+      }
+      
       return {
         success: true,
         canvas: result.canvas,
