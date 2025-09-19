@@ -25,12 +25,14 @@ export async function createCanvasFromResponse(client, channelId, content, title
     });
 
     if (result.ok) {
+      // Extract canvas ID from the response
+      const canvasId = result.canvas_id || result.canvas?.canvas_id;
+      
       logger.info('Canvas created successfully:', { 
-        canvasId: result.canvas?.canvas_id,
+        canvasId: canvasId,
         fullResult: result 
       });
       
-      const canvasId = result.canvas?.canvas_id;
       if (!canvasId) {
         logger.error('Canvas created but no canvas_id returned:', result);
         return {
@@ -43,7 +45,12 @@ export async function createCanvasFromResponse(client, channelId, content, title
       try {
         const editResult = await client.canvases.edit({
           canvas_id: canvasId,
-          document_content: documentContent
+          changes: [
+            {
+              operation: 'replace',
+              document_content: documentContent
+            }
+          ]
         });
         
         if (editResult.ok) {
@@ -58,6 +65,7 @@ export async function createCanvasFromResponse(client, channelId, content, title
       return {
         success: true,
         canvas: result.canvas,
+        canvasId: canvasId,
         url: result.canvas?.url
       };
     } else {
@@ -231,11 +239,27 @@ export async function createSimpleCanvas(client, channelId, text, title = 'AI Re
     });
 
     if (result.ok) {
+      // Extract canvas ID from the response
+      const canvasId = result.canvas_id || result.canvas?.canvas_id;
+      
+      if (!canvasId) {
+        logger.error('Canvas created but no canvas_id returned:', result);
+        return {
+          success: false,
+          error: 'Canvas created but no ID returned'
+        };
+      }
+      
       // Try to add content to the canvas using canvases.edit
       try {
         const editResult = await client.canvases.edit({
-          canvas_id: result.canvas.canvas_id,
-          document_content: documentContent
+          canvas_id: canvasId,
+          changes: [
+            {
+              operation: 'replace',
+              document_content: documentContent
+            }
+          ]
         });
         
         if (editResult.ok) {
@@ -250,6 +274,7 @@ export async function createSimpleCanvas(client, channelId, text, title = 'AI Re
       return {
         success: true,
         canvas: result.canvas,
+        canvasId: canvasId,
         url: result.canvas?.url
       };
     } else {
