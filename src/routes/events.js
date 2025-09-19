@@ -467,7 +467,10 @@ app.event('*', async ({ event, client, context }) => {
 
   // Channel messages — check for monitored channels
   app.message(async ({ message, event, client, context }) => {
-    if (message.subtype || !message.text) return;
+    // Skip system messages but allow bot messages
+    const systemSubtypes = ['channel_join', 'channel_leave', 'channel_topic', 'channel_purpose', 'channel_name', 'channel_archive', 'channel_unarchive', 'pinned_item', 'unpinned_item'];
+    if (systemSubtypes.includes(message.subtype)) return;
+    if (!message.text) return;
     if (event.channel_type !== 'channel') return;
 
     try {
@@ -475,6 +478,16 @@ app.event('*', async ({ event, client, context }) => {
       const channel = event.channel;
       const user = message.user;
       const userText = String(message.text || '').slice(0, config.limits?.maxUserChars ?? 4000);
+
+      logger.info('Processing message in channel:', { 
+        team, 
+        channel, 
+        user, 
+        subtype: message.subtype,
+        bot_id: message.bot_id,
+        hasText: !!message.text,
+        textPreview: userText.substring(0, 50)
+      });
 
       // Check if this channel is being monitored
       const monitoredChannel = await isChannelMonitored(team, channel);
@@ -583,15 +596,20 @@ app.event('*', async ({ event, client, context }) => {
             } catch {}
 
             // Create a summary for the Jira ticket
-            const ticketDescription = `Auto-generated ticket from monitored channel #${monitoredChannel.channelName}
-            
-Thread started by: ${userText}
-Response Type: ${monitoredChannel.responseType}
-
-This ticket was automatically created after the bot's 1st response in the thread to track ongoing discussion and ensure follow-up.`;
+            const ticketDescription = `Auto-generated ticket from monitored channel #${monitoredChannel.channelName}\n\nThread started by: ${userText}\nResponse Type: ${monitoredChannel.responseType}\n\nThis ticket was automatically created after the bot's 1st response in the thread to track ongoing discussion and ensure follow-up.`;
 
             // Extract ticket information and create it
             const ticketData = extractTicketFromContext(ticketDescription, recentMessages);
+            
+            // Clean up the summary to remove newlines (Jira doesn't allow them in summary)
+            if (ticketData.summary) {
+              ticketData.summary = ticketData.summary.replace(/[\r\n]+/g, ' ').trim();
+              // Ensure summary isn't too long (Jira limit is typically 255 characters)
+              if (ticketData.summary.length > 200) {
+                ticketData.summary = ticketData.summary.substring(0, 197) + '...';
+              }
+            }
+            
             logger.info('Ticket data for auto-Jira creation:', ticketData);
             
             const jiraResult = await createJiraTicket(team, ticketData);
