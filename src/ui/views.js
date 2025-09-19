@@ -598,12 +598,6 @@ export function agentSettingsModal(currentSettings = null) {
         element: {
           type: 'checkboxes',
           action_id: 'canvas_checkbox',
-          initial_options: currentSettings?.autoCreateCanvas ? [
-            {
-              text: { type: 'plain_text', text: 'Automatically create Slack Canvas for responses' },
-              value: 'enabled'
-            }
-          ] : [],
           options: [
             {
               text: { type: 'plain_text', text: 'Automatically create Slack Canvas for responses' },
