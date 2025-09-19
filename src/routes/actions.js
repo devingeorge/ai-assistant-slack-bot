@@ -1039,6 +1039,7 @@ export function registerActions(app) {
       const values = view.state.values;
       const channelId = values.channel_select?.channel_input?.selected_channel;
       const responseType = values.response_type?.response_type_input?.selected_option?.value;
+      const autoJiraTickets = values.auto_jira_tickets?.auto_jira_input?.selected_options?.some(option => option.value === 'enabled') || false;
       
       if (!channelId || !responseType) {
         await client.chat.postEphemeral({
@@ -1058,6 +1059,7 @@ export function registerActions(app) {
         channelName,
         responseType,
         enabled: true,
+        autoCreateJiraTickets: autoJiraTickets,
         addedBy: userId
       });
       

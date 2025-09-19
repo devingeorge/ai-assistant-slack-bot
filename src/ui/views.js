@@ -887,6 +887,23 @@ export function addMonitoredChannelModal() {
           ]
         },
         hint: { type: 'plain_text', text: 'How should the bot respond to messages in this channel?' }
+      },
+      {
+        type: 'input',
+        block_id: 'auto_jira_tickets',
+        label: { type: 'plain_text', text: 'Auto-Create Jira Tickets' },
+        element: {
+          type: 'checkboxes',
+          action_id: 'auto_jira_input',
+          options: [
+            {
+              text: { type: 'plain_text', text: 'Create Jira ticket after 2nd bot response in thread' },
+              value: 'enabled'
+            }
+          ]
+        },
+        hint: { type: 'plain_text', text: 'Automatically creates a Jira ticket to track ongoing discussions' },
+        optional: true
       }
     ]
   };
@@ -922,11 +939,13 @@ export function manageMonitoredChannelsModal(channels) {
         insights: 'Insights'
       };
       
+      const jiraStatus = channel.autoCreateJiraTickets ? '🎫 Auto-Jira: On' : '🎫 Auto-Jira: Off';
+      
       blocks.push({
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `${statusEmoji} *#${channel.channelName}*\nResponse Type: ${responseTypeLabels[channel.responseType] || channel.responseType}\n_${statusText}_`
+          text: `${statusEmoji} *#${channel.channelName}*\nResponse Type: ${responseTypeLabels[channel.responseType] || channel.responseType}\n${jiraStatus}\n_${statusText}_`
         },
         accessory: {
           type: 'overflow',

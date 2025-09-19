@@ -22,7 +22,7 @@ import { detectIntent } from '../services/intent.js';
 import { createJiraTicket, getJiraConfig, extractTicketFromContext } from '../services/jira.js';
 import { findMatchingTrigger } from '../services/triggers.js';
 import { getSuggestedPromptButtons, getSuggestedPromptsForAPI } from '../services/assistantPanel.js';
-import { isChannelMonitored } from '../services/channelMonitoring.js';
+import { isChannelMonitored, incrementThreadResponseCount } from '../services/channelMonitoring.js';
 import { Assistant } from '@slack/bolt';
 
 /** Resolve the channel the user is viewing in the Assistant panel (if present). */
@@ -550,6 +550,53 @@ app.event('*', async ({ event, client, context }) => {
         initialText: null,
         useBlockKit: false // Use simple text for thread responses
       });
+
+      // Check if we should create a Jira ticket (after 2nd bot response)
+      if (monitoredChannel.autoCreateJiraTickets) {
+        const responseCount = await incrementThreadResponseCount(team, channel, message.ts);
+        
+        if (responseCount === 2) {
+          logger.info('Creating auto Jira ticket after 2nd bot response:', { team, channel, threadTs: message.ts });
+          
+          try {
+            // Get recent messages for context
+            let recentMessages = [];
+            try {
+              const hist = await getRecentMessages(client, channel, { limit: 10 });
+              if (hist.ok && hist.messages.length) {
+                recentMessages = hist.messages;
+              }
+            } catch {}
+
+            // Create a summary for the Jira ticket
+            const ticketDescription = `Auto-generated ticket from monitored channel #${monitoredChannel.channelName}
+            
+Thread started by: ${userText}
+Response Type: ${monitoredChannel.responseType}
+
+This ticket was automatically created after the bot's 2nd response in the thread to track ongoing discussion and ensure follow-up.`;
+
+            // Extract ticket information and create it
+            const ticketData = extractTicketFromContext(ticketDescription, recentMessages);
+            const jiraResult = await createJiraTicket(team, ticketData);
+
+            if (jiraResult.success) {
+              // Post the Jira ticket link in the thread
+              await client.chat.postMessage({
+                channel: channel,
+                thread_ts: message.ts,
+                text: `🎫 *Auto-Created Jira Ticket*\n\n<${jiraResult.ticket.url}|${jiraResult.ticket.key}>: ${jiraResult.ticket.summary}\n\nThis ticket was automatically created to track this ongoing discussion.`
+              });
+              
+              logger.info('Auto Jira ticket created successfully:', jiraResult.ticket);
+            } else {
+              logger.error('Failed to create auto Jira ticket:', jiraResult.error);
+            }
+          } catch (error) {
+            logger.error('Error creating auto Jira ticket:', error);
+          }
+        }
+      }
 
     } catch (error) {
       logger.error('Error processing monitored channel message:', error);

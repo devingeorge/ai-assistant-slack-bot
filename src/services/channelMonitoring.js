@@ -40,6 +40,7 @@ export async function addMonitoredChannel(teamId, channelData) {
       channelName: channelData.channelName,
       responseType: channelData.responseType || 'analytical',
       enabled: channelData.enabled !== false,
+      autoCreateJiraTickets: channelData.autoCreateJiraTickets || false,
       addedAt: new Date().toISOString(),
       addedBy: channelData.addedBy
     };
@@ -141,4 +142,40 @@ export function getResponseTypes() {
       description: 'Share observations and actionable insights'
     }
   ];
+}
+
+/** Generate storage key for thread response counts */
+function threadResponseCountKey(teamId, channelId, threadTs) {
+  return `thread_response_count:${teamId}:${channelId}:${threadTs}`;
+}
+
+/** Increment and get bot response count for a thread */
+export async function incrementThreadResponseCount(teamId, channelId, threadTs) {
+  try {
+    const key = threadResponseCountKey(teamId, channelId, threadTs);
+    const currentCount = await redis.incr(key);
+    
+    // Set expiration to 30 days to prevent unlimited growth
+    if (currentCount === 1) {
+      await redis.expire(key, 30 * 24 * 3600);
+    }
+    
+    logger.info('Incremented thread response count:', { teamId, channelId, threadTs, count: currentCount });
+    return currentCount;
+  } catch (error) {
+    logger.error('Error incrementing thread response count:', error);
+    return 0;
+  }
+}
+
+/** Get current bot response count for a thread */
+export async function getThreadResponseCount(teamId, channelId, threadTs) {
+  try {
+    const key = threadResponseCountKey(teamId, channelId, threadTs);
+    const count = await redis.get(key);
+    return count ? parseInt(count) : 0;
+  } catch (error) {
+    logger.error('Error getting thread response count:', error);
+    return 0;
+  }
 }
