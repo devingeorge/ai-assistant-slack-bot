@@ -596,14 +596,22 @@ export function agentSettingsModal(currentSettings = null) {
         block_id: 'canvas_setting',
         label: { type: 'plain_text', text: 'Canvas Creation' },
         element: {
-          type: 'checkboxes',
-          action_id: 'canvas_checkbox',
+          type: 'static_select',
+          action_id: 'canvas_select',
+          placeholder: { type: 'plain_text', text: 'Select option...' },
           options: [
             {
-              text: { type: 'plain_text', text: 'Allow Canvas creation when requested' },
+              text: { type: 'plain_text', text: 'On' },
               value: 'enabled'
+            },
+            {
+              text: { type: 'plain_text', text: 'Off' },
+              value: 'disabled'
             }
-          ]
+          ],
+          initial_option: currentSettings?.autoCreateCanvas ? 
+            { text: { type: 'plain_text', text: 'On' }, value: 'enabled' } :
+            { text: { type: 'plain_text', text: 'Off' }, value: 'disabled' }
         },
         hint: { type: 'plain_text', text: 'Enable Canvas creation when you ask for it (e.g., "create canvas for this")' },
         optional: true

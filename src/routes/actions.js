@@ -655,7 +655,7 @@ export function registerActions(app) {
         responseLength: values.response_length_setting.response_length_select.selected_option?.value || 'balanced',
         languageStyle: values.language_style_setting.language_style_select.selected_option?.value || 'conversational',
         customInstructions: values.custom_instructions_setting.custom_instructions_input.value || '',
-        autoCreateCanvas: values.canvas_setting?.canvas_checkbox?.selected_options?.some(option => option.value === 'enabled') || false
+        autoCreateCanvas: values.canvas_setting?.canvas_select?.selected_option?.value === 'enabled'
       };
       
       // Save agent settings
