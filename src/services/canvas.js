@@ -25,12 +25,24 @@ export async function createCanvasFromResponse(client, channelId, content, title
     });
 
     if (result.ok) {
-      logger.info('Canvas created successfully:', { canvasId: result.canvas?.canvas_id });
+      logger.info('Canvas created successfully:', { 
+        canvasId: result.canvas?.canvas_id,
+        fullResult: result 
+      });
+      
+      const canvasId = result.canvas?.canvas_id;
+      if (!canvasId) {
+        logger.error('Canvas created but no canvas_id returned:', result);
+        return {
+          success: false,
+          error: 'Canvas created but no ID returned'
+        };
+      }
       
       // Try to add content to the canvas using canvases.edit
       try {
         const editResult = await client.canvases.edit({
-          canvas_id: result.canvas.canvas_id,
+          canvas_id: canvasId,
           document_content: documentContent
         });
         

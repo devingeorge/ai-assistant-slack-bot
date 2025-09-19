@@ -55,7 +55,9 @@ const receiver = new ExpressReceiver({
     'mpim:history',
     'mpim:read',
     'users:read',
-    'assistant:write'
+    'assistant:write',
+    'canvas:write',
+    'canvas:read'
   ],
   installationStore: {
     storeInstallation: saveInstallation,
