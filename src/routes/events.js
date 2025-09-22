@@ -33,24 +33,58 @@ async function handleCanvasCreation(client, teamId, userId, channelId, userMessa
     if (agentSettings?.autoCreateCanvas && isCanvasCreationRequest(userMessage)) {
       logger.info('User requesting Canvas creation:', { teamId, userId, channelId, message: userMessage });
       
-      const canvasContent = extractCanvasContent(userMessage);
+      const canvasTopic = extractCanvasContent(userMessage);
       
-      if (!canvasContent || canvasContent.length < 3) {
+      if (!canvasTopic || canvasTopic.length < 3) {
         await client.chat.postMessage({
           channel: channelId,
-          text: '⚠️ Please provide content for the Canvas.\nExample: "create canvas for my meeting notes about the project update"'
+          text: '⚠️ Please provide a topic for the Canvas.\nExample: "create canvas about machine learning" or "create canvas for project planning"'
         });
         return null;
       }
       
-      const title = canvasContent.length > 50 ? 
-        `${canvasContent.substring(0, 50)}...` : 
-        canvasContent;
+      const title = canvasTopic.length > 50 ? 
+        `${canvasTopic.substring(0, 50)}...` : 
+        canvasTopic;
       
+      // Generate AI content about the topic first
+      logger.info('Generating AI content for Canvas topic:', { topic: canvasTopic });
+      
+      // Create a prompt for the AI to generate content about the topic
+      const aiPrompt = `Create comprehensive content about: ${canvasTopic}. Provide detailed information, key points, and actionable insights. Format it clearly with headers and bullet points for a Canvas document.`;
+      
+      // Get AI response using the same LLM service
+      const key = convoKey({ team: teamId, channel: channelId, thread: null, user: userId });
+      await store.addUserTurn(key, aiPrompt);
+      
+      const history = await store.history(key);
+      const system = buildSystemPrompt({
+        surface: 'channel',
+        channelContextText: '',
+        docContext: '',
+        userMessage: aiPrompt,
+        agentSettings
+      });
+      
+      const llmStream = getLLMStream();
+      const iter = llmStream({ messages: history, system });
+      
+      // Collect the AI response
+      let aiResponse = '';
+      for await (const chunk of iter) {
+        aiResponse += chunk;
+      }
+      
+      // Add the AI response to conversation history
+      await store.addAssistantTurn(key, aiResponse);
+      
+      logger.info('AI content generated for Canvas:', { topic: canvasTopic, responseLength: aiResponse.length });
+      
+      // Now create Canvas with the AI-generated content
       const canvasResult = await createCanvasFromResponse(
         client,
         channelId,
-        canvasContent,
+        aiResponse,
         title,
         userMessage
       );
@@ -61,7 +95,7 @@ async function handleCanvasCreation(client, teamId, userId, channelId, userMessa
         // Post a message with the canvas link
         await client.chat.postMessage({
           channel: channelId,
-          text: `📄 *Canvas Created Successfully!*\n\n<${canvasResult.url}|View Canvas: ${title}>\n\nCanvas ID: \`${canvasResult.canvasId}\``
+          text: `📄 *Here's your Canvas about ${canvasTopic}*\n\n<${canvasResult.url}|View Canvas: ${title}>`
         });
         
         return canvasResult;
