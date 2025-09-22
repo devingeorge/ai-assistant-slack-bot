@@ -92,17 +92,39 @@ async function handleCanvasCreation(client, teamId, userId, channelId, userMessa
       if (canvasResult.success) {
         logger.info('Canvas created successfully:', { canvasId: canvasResult.canvasId });
         
-        // Post a message with the canvas link
+        // Share the Canvas with the user and get the proper URL
+        try {
+          const shareResult = await client.canvases.access.set({
+            canvas_id: canvasResult.canvasId,
+            user_ids: [userId]
+          });
+          
+          if (shareResult.ok) {
+            logger.info('Canvas shared with user successfully');
+          } else {
+            logger.warn('Failed to share Canvas with user:', shareResult.error);
+          }
+        } catch (shareError) {
+          logger.warn('Error sharing Canvas with user:', shareError.message);
+        }
+        
+        // Post a message with the canvas link in the Assistant thread
+        const assistantThreadTs = await getAssistantThread(channelId);
+        
         await client.chat.postMessage({
           channel: channelId,
+          thread_ts: assistantThreadTs || undefined,
           text: `📄 *Here's your Canvas about ${canvasTopic}*\n\n<${canvasResult.url}|View Canvas: ${title}>`
         });
         
         return canvasResult;
       } else {
         logger.error('Failed to create Canvas:', canvasResult.error);
+        const assistantThreadTs = await getAssistantThread(channelId);
+        
         await client.chat.postMessage({
           channel: channelId,
+          thread_ts: assistantThreadTs || undefined,
           text: `❌ Failed to create Canvas: ${canvasResult.error}`
         });
       }
