@@ -9,9 +9,10 @@ import { logger } from '../lib/logger.js';
  * @param {string} title - Title for the canvas
  * @param {string} userQuery - Original user query that generated this response
  * @param {string} workspaceDomain - Workspace domain for Canvas URL
+ * @param {string} teamId - Team ID for Canvas URL
  * @returns {Promise<Object>} Canvas creation result
  */
-export async function createCanvasFromResponse(client, channelId, content, title, userQuery, workspaceDomain = null) {
+export async function createCanvasFromResponse(client, channelId, content, title, userQuery, workspaceDomain = null, teamId = null) {
   try {
     logger.info('Creating canvas from AI response:', { channelId, title, contentLength: content.length });
 
@@ -67,7 +68,7 @@ export async function createCanvasFromResponse(client, channelId, content, title
         success: true,
         canvas: result.canvas,
         canvasId: canvasId,
-        url: generateCanvasUrl(canvasId)
+        url: generateCanvasUrl(canvasId, workspaceDomain, teamId)
       };
     } else {
       logger.error('Failed to create canvas:', result.error);
@@ -208,13 +209,14 @@ function generateCanvasId() {
  * Generate the proper Canvas URL for a workspace
  * @param {string} canvasId - Canvas ID
  * @param {string} workspaceDomain - Workspace domain (optional)
+ * @param {string} teamId - Team ID (required for proper Canvas URL)
  * @returns {string} Canvas URL
  */
-function generateCanvasUrl(canvasId, workspaceDomain = null) {
-  if (workspaceDomain) {
-    return `https://${workspaceDomain}/docs/${canvasId}`;
+function generateCanvasUrl(canvasId, workspaceDomain = null, teamId = null) {
+  if (workspaceDomain && teamId) {
+    return `https://${workspaceDomain}/docs/${teamId}/${canvasId}`;
   }
-  // Fallback to generic format - user will need to replace domain
+  // Fallback to generic format - user will need to replace domain and add team ID
   return `https://slack.com/docs/${canvasId}`;
 }
 
@@ -275,7 +277,7 @@ export async function createSimpleCanvas(client, channelId, text, title = 'AI Re
         success: true,
         canvas: result.canvas,
         canvasId: canvasId,
-        url: generateCanvasUrl(canvasId)
+        url: generateCanvasUrl(canvasId, workspaceDomain, teamId)
       };
     } else {
       return {

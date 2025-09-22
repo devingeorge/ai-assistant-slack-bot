@@ -99,7 +99,8 @@ async function handleCanvasCreation(client, teamId, userId, channelId, userMessa
         aiResponse,
         title,
         userMessage,
-        workspaceDomain
+        workspaceDomain,
+        teamId
       );
       
       if (canvasResult.success) {
