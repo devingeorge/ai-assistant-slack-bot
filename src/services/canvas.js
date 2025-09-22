@@ -8,9 +8,10 @@ import { logger } from '../lib/logger.js';
  * @param {string} content - AI response content to format into canvas
  * @param {string} title - Title for the canvas
  * @param {string} userQuery - Original user query that generated this response
+ * @param {string} workspaceDomain - Workspace domain for Canvas URL
  * @returns {Promise<Object>} Canvas creation result
  */
-export async function createCanvasFromResponse(client, channelId, content, title, userQuery) {
+export async function createCanvasFromResponse(client, channelId, content, title, userQuery, workspaceDomain = null) {
   try {
     logger.info('Creating canvas from AI response:', { channelId, title, contentLength: content.length });
 
@@ -66,7 +67,7 @@ export async function createCanvasFromResponse(client, channelId, content, title
         success: true,
         canvas: result.canvas,
         canvasId: canvasId,
-        url: `https://slack.com/canvas/${canvasId}`
+        url: generateCanvasUrl(canvasId)
       };
     } else {
       logger.error('Failed to create canvas:', result.error);
@@ -204,6 +205,20 @@ function generateCanvasId() {
 }
 
 /**
+ * Generate the proper Canvas URL for a workspace
+ * @param {string} canvasId - Canvas ID
+ * @param {string} workspaceDomain - Workspace domain (optional)
+ * @returns {string} Canvas URL
+ */
+function generateCanvasUrl(canvasId, workspaceDomain = null) {
+  if (workspaceDomain) {
+    return `https://${workspaceDomain}/docs/${canvasId}`;
+  }
+  // Fallback to generic format - user will need to replace domain
+  return `https://slack.com/docs/${canvasId}`;
+}
+
+/**
  * Create a simple canvas with just text content using canvases.create API
  * @param {Object} client - Slack client
  * @param {string} channelId - Channel ID
@@ -260,7 +275,7 @@ export async function createSimpleCanvas(client, channelId, text, title = 'AI Re
         success: true,
         canvas: result.canvas,
         canvasId: canvasId,
-        url: `https://slack.com/canvas/${canvasId}`
+        url: generateCanvasUrl(canvasId)
       };
     } else {
       return {

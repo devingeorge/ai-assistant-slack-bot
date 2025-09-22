@@ -24,6 +24,7 @@ import { findMatchingTrigger } from '../services/triggers.js';
 import { getSuggestedPromptButtons, getSuggestedPromptsForAPI } from '../services/assistantPanel.js';
 import { isChannelMonitored, incrementThreadResponseCount } from '../services/channelMonitoring.js';
 import { createCanvasFromResponse, isCanvasCreationRequest, extractCanvasContent } from '../services/canvas.js';
+import { getInstallation } from '../services/installations.js';
 import { Assistant } from '@slack/bolt';
 
 /** Helper function to handle Canvas creation requests */
@@ -80,13 +81,25 @@ async function handleCanvasCreation(client, teamId, userId, channelId, userMessa
       
       logger.info('AI content generated for Canvas:', { topic: canvasTopic, responseLength: aiResponse.length });
       
+      // Get workspace domain for proper Canvas URL
+      let workspaceDomain = null;
+      try {
+        const installation = await getInstallation({ teamId: teamId });
+        if (installation.team?.domain) {
+          workspaceDomain = `${installation.team.domain}.slack.com`;
+        }
+      } catch (error) {
+        logger.warn('Could not get workspace domain:', error.message);
+      }
+      
       // Now create Canvas with the AI-generated content
       const canvasResult = await createCanvasFromResponse(
         client,
         channelId,
         aiResponse,
         title,
-        userMessage
+        userMessage,
+        workspaceDomain
       );
       
       if (canvasResult.success) {
