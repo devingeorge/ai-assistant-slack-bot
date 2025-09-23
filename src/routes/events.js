@@ -1182,22 +1182,43 @@ app.event('*', async ({ event, client, context }) => {
       const userId = event.user;
       const teamId = context.teamId || event.team_id || event.team || 'unknown';
       
+      logger.info(`App Home opened for user ${userId} in team ${teamId}`);
       
-      // Check if user is admin
-      const userInfo = await client.users.info({ user: userId });
-      const isAdmin = userInfo.user.is_admin || userInfo.user.is_owner;
-      
-      // Always get Jira config to show proper status (admin controls are separate)
-      const { getJiraConfig } = await import('../services/jira.js');
-      const jiraConfig = await getJiraConfig(teamId);
-      
-      // Get user's agent settings
-      const agentSettings = await getAgentSettings(teamId, userId);
-      
+      // Use simple view first to avoid auth issues
       await client.views.publish({
         user_id: userId,
-        view: homeView(isAdmin, jiraConfig, agentSettings)
+        view: {
+          type: "home",
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: `*Welcome to Grok AI, <@${userId}>! :house:*`
+              }
+            },
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: "This is your AI assistant powered by Grok. You can ask questions, create canvases, and manage your settings here."
+              }
+            },
+            {
+              type: "divider"
+            },
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: "*Quick Actions:*\n• Ask me anything with @mentions\n• Create canvases with 'create a canvas about...'\n• Use `/ask` command for questions"
+              }
+            }
+          ]
+        }
       });
+      
+      logger.info(`App Home view published successfully for user ${userId}`);
     } catch (error) {
       logger.error('App Home error:', error);
     }

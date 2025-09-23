@@ -66,7 +66,17 @@ export async function getInstallation(installQuery) {
 
     const installation = JSON.parse(installationData);
     
-    logger.info('Retrieved installation:', { teamId, enterpriseId, userId });
+    // Debug: Check what tokens we have
+    logger.info('Retrieved installation:', { 
+      teamId, 
+      enterpriseId, 
+      userId,
+      hasBotToken: !!installation.bot?.token,
+      hasUserToken: !!installation.user?.token,
+      botTokenPrefix: installation.bot?.token ? installation.bot.token.substring(0, 10) + '...' : 'none',
+      botScopes: installation.bot?.scopes || [],
+      userScopes: installation.user?.scopes || []
+    });
     
     return installation;
   } catch (error) {
