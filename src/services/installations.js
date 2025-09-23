@@ -7,7 +7,7 @@ import { logger } from '../lib/logger.js';
  */
 export async function saveInstallation(installation) {
   try {
-    logger.info('Saving installation - full installation data:', JSON.stringify(installation, null, 2));
+    logger.info('🚀 SAVE INSTALLATION CALLED - full installation data:', JSON.stringify(installation, null, 2));
     
     const teamId = installation.team?.id;
     const enterpriseId = installation.enterprise?.id;

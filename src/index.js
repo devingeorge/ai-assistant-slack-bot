@@ -101,6 +101,12 @@ receiver.router.use((req, res, next) => {
       console.log('🔐 OAuth callback received');
       console.log('🔑 State secret configured:', !!config.slack.stateSecret);
       console.log('🔑 State secret value:', config.slack.stateSecret ? 'PRESENT' : 'MISSING');
+      console.log('🔑 Query params:', req.query);
+    }
+    
+    // Check if this is an install request
+    if (req.path === '/slack/install') {
+      console.log('📦 Install request received');
     }
   }
   next();
